@@ -95,18 +95,14 @@ class ServerThread extends Thread { // Inherit from Thread
                 } // End login
 
                 // Handle client new user registration request
+                // Handle client new user registration request
                 else if (str.equals("new")) {
                     try {
-                        // Class.forName("sun.jdbc.odbc.JdbcOdbcDriver"); // Load database driver
-                        // Connection c2 = DriverManager.getConnection("jdbc:odbc:javaicq", "sa", ""); // Connect to database
                         Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
                         Connection c2 = DriverManager.getConnection(
                             "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
                         );
                         String newsql = "insert into icq(icqno,nickname,password,email,info,place,pic,sex) values(?,?,?,?,?,?,?,?)";
-                        // Prepare to accept user's nickname, password, email, personal info, hometown, avatar, etc.
                         PreparedStatement prepare2 = c2.prepareCall(newsql);
                         int icqno = Integer.parseInt(in.readLine());
                         String nickname = in.readLine().trim();
@@ -116,6 +112,7 @@ class ServerThread extends Thread { // Inherit from Thread
                         String place = in.readLine().trim();
                         int picindex = Integer.parseInt(in.readLine());
                         String sex = in.readLine().trim();
+                        
                         prepare2.clearParameters();
                         prepare2.setInt(1, icqno);
                         prepare2.setString(2, nickname);
@@ -125,23 +122,35 @@ class ServerThread extends Thread { // Inherit from Thread
                         prepare2.setString(6, place);
                         prepare2.setInt(7, picindex);
                         prepare2.setString(8, sex);
+                        
                         int r3 = prepare2.executeUpdate(); // Execute database insert
-                        String sql2 = "select icqno from icq where nickname=?";
-                        // Tell client their registered number
-                        PreparedStatement prepare3 = c2.prepareCall(sql2);
-                        prepare3.clearParameters();
-                        prepare3.setString(1, nickname);
-                        ResultSet r2 = prepare3.executeQuery();
-                        while (r2.next()) {
-                            no = r2.getInt(1);
-                            System.out.println(no);
+                        
+                        if (r3 == 1) { // Success
+                            String sql2 = "select icqno from icq where nickname=?";
+                            PreparedStatement prepare3 = c2.prepareCall(sql2);
+                            prepare3.clearParameters();
+                            prepare3.setString(1, nickname);
+                            ResultSet r2 = prepare3.executeQuery();
+                            
+                            if (r2.next()) {
+                                no = r2.getInt(1);
+                                System.out.println("New user registered with ICQ: " + no);
+                            }
+                            
+                            out.println(no); // Send the ICQ number
+                            out.println("ok"); // Send success status
+                            r2.close();
+                            prepare3.close();
+                        } else {
+                            out.println("-1"); // Send error code instead of "false"
+                            out.println("false"); // Send failure status
                         }
-                        out.println(no);
-                        out.println("ok");
+                        
                         c2.close();
                     } catch (Exception e) {
                         e.printStackTrace();
-                        out.println("false");
+                        out.println("-1"); // Send error code instead of "false"
+                        out.println("false"); // Send failure status
                     }
                     socket.close();
                 } // End new user registration

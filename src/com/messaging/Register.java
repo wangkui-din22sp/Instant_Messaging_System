@@ -162,11 +162,18 @@ public class Register extends JDialog {//Register window
 					.getInputStream()));
 			PrintWriter out = new PrintWriter(new BufferedWriter(
 					new OutputStreamWriter(socket.getOutputStream())), true);
-			String sex;
+			String sex="Unknown";
 			if (girl.getState())
-				sex = "女";
-			else
+				sex = "Female";
+			if (boy.getState())
 				sex = "Male";
+			if (icqno.getText().trim().equals("") || nickname.getText().trim().equals("")
+					|| password.getPassword().length == 0) {
+				JOptionPane.showMessageDialog(this, "QQ number, nickname, and password cannot be empty!", "ok",
+						JOptionPane.INFORMATION_MESSAGE);
+				return;
+			}
+			
 
 			out.println("new");//Create new user registration
 			out.println(icqno.getText().trim());
