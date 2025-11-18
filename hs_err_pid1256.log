@@ -1,0 +1,86 @@
+
+An unexpected exception has been detected in native code outside the VM.
+Unexpected Signal : EXCEPTION_ACCESS_VIOLATION (0xc0000005) occurred at PC=0x7C921010
+Function=RtlEnterCriticalSection+0xB
+Library=C:\WINDOWS\system32\ntdll.dll
+
+Current Java thread:
+	at sun.jdbc.odbc.JdbcOdbc.allocConnect(Native Method)
+	at sun.jdbc.odbc.JdbcOdbc.SQLAllocConnect(JdbcOdbc.java:114)
+	at sun.jdbc.odbc.JdbcOdbcDriver.allocConnection(JdbcOdbcDriver.java:930)
+	at sun.jdbc.odbc.JdbcOdbcConnection.initialize(JdbcOdbcConnection.java:126)
+	at sun.jdbc.odbc.JdbcOdbcDriver.connect(JdbcOdbcDriver.java:174)
+	- locked <0x100a02d8> (a sun.jdbc.odbc.JdbcOdbcDriver)
+	at java.sql.DriverManager.getConnection(DriverManager.java:512)
+	- locked <0x141844a8> (a java.lang.Class)
+	at java.sql.DriverManager.getConnection(DriverManager.java:171)
+	- locked <0x141844a8> (a java.lang.Class)
+	at com.jicq.ServerThread.run(Server.java:169)
+
+Dynamic libraries:
+0x00400000 - 0x00407000 	C:\jdk\bin\javaw.exe
+0x7C920000 - 0x7C9B4000 	C:\WINDOWS\system32\ntdll.dll
+0x7C800000 - 0x7C91C000 	C:\WINDOWS\system32\kernel32.dll
+0x77DA0000 - 0x77E49000 	C:\WINDOWS\system32\ADVAPI32.dll
+0x77E50000 - 0x77EE1000 	C:\WINDOWS\system32\RPCRT4.dll
+0x77D10000 - 0x77D9F000 	C:\WINDOWS\system32\USER32.dll
+0x77EF0000 - 0x77F37000 	C:\WINDOWS\system32\GDI32.dll
+0x77BE0000 - 0x77C38000 	C:\WINDOWS\system32\MSVCRT.dll
+0x76300000 - 0x7631D000 	C:\WINDOWS\system32\IMM32.DLL
+0x62C20000 - 0x62C29000 	C:\WINDOWS\system32\LPK.DLL
+0x73FA0000 - 0x7400B000 	C:\WINDOWS\system32\USP10.dll
+0x08000000 - 0x08138000 	C:\jdk\jre\bin\client\jvm.dll
+0x76B10000 - 0x76B3A000 	C:\WINDOWS\system32\WINMM.dll
+0x10000000 - 0x10007000 	C:\jdk\jre\bin\hpi.dll
+0x003F0000 - 0x003FE000 	C:\jdk\jre\bin\verify.dll
+0x009A0000 - 0x009B9000 	C:\jdk\jre\bin\java.dll
+0x009C0000 - 0x009CD000 	C:\jdk\jre\bin\zip.dll
+0x02CB0000 - 0x02CCC000 	C:\jdk\jre\bin\jdwp.dll
+0x06CD0000 - 0x06CD5000 	C:\jdk\jre\bin\dt_socket.dll
+0x71A20000 - 0x71A37000 	C:\WINDOWS\system32\ws2_32.dll
+0x71A10000 - 0x71A18000 	C:\WINDOWS\system32\WS2HELP.dll
+0x719C0000 - 0x719FE000 	C:\WINDOWS\System32\mswsock.dll
+0x76EF0000 - 0x76F17000 	C:\WINDOWS\system32\DNSAPI.dll
+0x76D30000 - 0x76D48000 	C:\WINDOWS\system32\iphlpapi.dll
+0x76F80000 - 0x76F88000 	C:\WINDOWS\System32\winrnr.dll
+0x76F30000 - 0x76F5C000 	C:\WINDOWS\system32\WLDAP32.dll
+0x76F90000 - 0x76F96000 	C:\WINDOWS\system32\rasadhlp.dll
+0x60FD0000 - 0x61025000 	C:\WINDOWS\system32\hnetcfg.dll
+0x71A00000 - 0x71A08000 	C:\WINDOWS\System32\wshtcpip.dll
+0x06EC0000 - 0x06ECF000 	C:\jdk\jre\bin\net.dll
+0x06F10000 - 0x06F1C000 	C:\jdk\jre\bin\JdbcOdbc.dll
+0x73540000 - 0x7357D000 	C:\WINDOWS\system32\ODBC32.dll
+0x5D170000 - 0x5D207000 	C:\WINDOWS\system32\COMCTL32.dll
+0x7D590000 - 0x7DD82000 	C:\WINDOWS\system32\SHELL32.dll
+0x77F40000 - 0x77FB6000 	C:\WINDOWS\system32\SHLWAPI.dll
+0x76320000 - 0x76367000 	C:\WINDOWS\system32\comdlg32.dll
+0x77180000 - 0x77282000 	C:\WINDOWS\WinSxS\x86_Microsoft.Windows.Common-Controls_6595b64144ccf1df_6.0.2600.2180_x-ww_a84f1ff9\comctl32.dll
+0x20000000 - 0x20017000 	C:\WINDOWS\system32\odbcint.dll
+0x77BD0000 - 0x77BD8000 	C:\WINDOWS\system32\VERSION.dll
+0x76990000 - 0x76ACD000 	C:\WINDOWS\system32\ole32.dll
+0x5FDD0000 - 0x5FE24000 	C:\WINDOWS\system32\NETAPI32.dll
+0x77FC0000 - 0x77FD1000 	C:\WINDOWS\system32\Secur32.dll
+0x4D3D0000 - 0x4D3EB000 	C:\WINDOWS\system32\odbccp32.dll
+0x77C40000 - 0x77C63000 	C:\WINDOWS\system32\msv1_0.dll
+0x76C60000 - 0x76C88000 	C:\WINDOWS\system32\imagehlp.dll
+0x68D60000 - 0x68E01000 	C:\WINDOWS\system32\DBGHELP.dll
+0x76BC0000 - 0x76BCB000 	C:\WINDOWS\system32\PSAPI.DLL
+
+Heap at VM Abort:
+Heap
+ def new generation   total 576K, used 107K [0x10010000, 0x100b0000, 0x104f0000)
+  eden space 512K,   8% used [0x10010000, 0x1001ae78, 0x10090000)
+  from space 64K, 100% used [0x100a0000, 0x100b0000, 0x100b0000)
+  to   space 64K,   0% used [0x10090000, 0x10090000, 0x100a0000)
+ tenured generation   total 1408K, used 113K [0x104f0000, 0x10650000, 0x14010000)
+   the space 1408K,   8% used [0x104f0000, 0x1050c618, 0x1050c800, 0x10650000)
+ compacting perm gen  total 4096K, used 2130K [0x14010000, 0x14410000, 0x18010000)
+   the space 4096K,  52% used [0x14010000, 0x142249e8, 0x14224a00, 0x14410000)
+
+Local Time = Tue Jun 13 15:57:29 2006
+Elapsed Time = 716
+#
+# The exception above was detected in native code outside the VM
+#
+# Java VM: Java HotSpot(TM) Client VM (1.4.2_04-b05 mixed mode)
+#
