@@ -127,10 +127,10 @@ public class FindFriend2 extends JFrame {//
 	}
 
 	private void jbInit() throws Exception {//
-		jLabel1.setText("查找好友信息");
+		jLabel1.setText("List all registered users");
 		jLabel1.setBounds(new Rectangle(11, 11, 211, 18));
 		this.getContentPane().setLayout(new FlowLayout());
-		find2.setText("查找");
+		find2.setText("List all users");
 		find2.setBounds(new Rectangle(8, 289, 79, 29));
 		find2.addMouseListener(new java.awt.event.MouseAdapter() {
 			public void mouseClicked(MouseEvent e) {

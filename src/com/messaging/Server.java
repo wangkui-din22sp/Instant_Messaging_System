@@ -478,80 +478,91 @@ class ServerThread extends Thread { // Inherit from Thread
 public class Server {
     
     // Database initialization method
-    private static void initializeDatabase() {
-        Connection conn = null;
-        Statement stmt = null;
+    // Database initialization method - FIXED VERSION
+private static void initializeDatabase() {
+    Connection conn = null;
+    Statement stmt = null;
+    
+    try {
+        // First connect to master database without specifying database name
+        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+        conn = DriverManager.getConnection(
+            "jdbc:sqlserver://localhost:1433;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+        );
+        stmt = conn.createStatement();
         
-        try {
-            // First connect without database name to create the database
-            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
-            conn = DriverManager.getConnection("jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true");
-            stmt = conn.createStatement();
-            
-            // Create database if it doesn't exist
-            String createDBSQL = "IF NOT EXISTS(SELECT name FROM master.dbo.sysdatabases WHERE name = 'javaicq') CREATE DATABASE javaicq";
+        System.out.println("Checking database status...");
+        
+        // Check if database exists
+        String checkDBSQL = "SELECT name FROM sys.databases WHERE name = 'javaicq'";
+        ResultSet rs = stmt.executeQuery(checkDBSQL);
+        
+        if (!rs.next()) {
+            // Database doesn't exist, create it
+            System.out.println("javaicq database not found. Creating new database...");
+            String createDBSQL = "CREATE DATABASE javaicq";
             stmt.executeUpdate(createDBSQL);
-            System.out.println("Database checked/created successfully");
-            
-            // Close connection and reconnect to the new database
-            stmt.close();
-            conn.close();
-            
-            // Now connect to the javaicq database
-            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
-                        conn = DriverManager.getConnection(
-                            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
-                        );
-            
-            stmt = conn.createStatement();
-            
-            // Create icq table
-            String createIcqTable = 
-                "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='icq' AND xtype='U') " +
-                "CREATE TABLE icq (" +
-                "    icqno INT PRIMARY KEY," +
-                "    nickname VARCHAR(50)," +
-                "    password VARCHAR(50)," +
-                "    email VARCHAR(100)," +
-                "    info VARCHAR(255)," +
-                "    place VARCHAR(100)," +
-                "    pic INT," +
-                "    sex VARCHAR(10)," +
-                "    ip VARCHAR(50)," +
-                "    status BIT DEFAULT 0" +
-                ")";
-            stmt.executeUpdate(createIcqTable);
-            System.out.println("icq table checked/created successfully");
-            
-            // Create friend table
-            String createFriendTable = 
-                "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='friend' AND xtype='U') " +
-                "CREATE TABLE friend (" +
-                "    icqno INT," +
-                "    friend INT," +
-                "    PRIMARY KEY (icqno, friend)" +
-                ")";
-            stmt.executeUpdate(createFriendTable);
-            System.out.println("friend table checked/created successfully");
-            
-            System.out.println("Database initialization completed successfully!");
-            
-        } catch (Exception e) {
-            System.err.println("Database initialization failed: " + e.getMessage());
+            System.out.println("javaicq database created successfully");
+        } else {
+            System.out.println("javaicq database already exists");
+        }
+        rs.close();
+        
+        // Close connection to master
+        stmt.close();
+        conn.close();
+        
+        // Now connect to the javaicq database
+        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+        conn = DriverManager.getConnection(
+            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+        );
+        
+        stmt = conn.createStatement();
+        
+        // Create icq table if it doesn't exist
+        String createIcqTable = 
+            "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='icq' AND xtype='U') " +
+            "CREATE TABLE icq (" +
+            "    icqno INT PRIMARY KEY," +
+            "    nickname VARCHAR(50)," +
+            "    password VARCHAR(50)," +
+            "    email VARCHAR(100)," +
+            "    info VARCHAR(255)," +
+            "    place VARCHAR(100)," +
+            "    pic INT," +
+            "    sex VARCHAR(10)," +
+            "    ip VARCHAR(50)," +
+            "    status BIT DEFAULT 0" +
+            ")";
+        stmt.executeUpdate(createIcqTable);
+        System.out.println("icq table checked/created successfully");
+        
+        // Create friend table if it doesn't exist
+        String createFriendTable = 
+            "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='friend' AND xtype='U') " +
+            "CREATE TABLE friend (" +
+            "    icqno INT," +
+            "    friend INT," +
+            "    PRIMARY KEY (icqno, friend)" +
+            ")";
+        stmt.executeUpdate(createFriendTable);
+        System.out.println("friend table checked/created successfully");
+        
+        System.out.println("Database initialization completed successfully!");
+        
+    } catch (Exception e) {
+        System.err.println("Database initialization failed: " + e.getMessage());
+        e.printStackTrace();
+    } finally {
+        try {
+            if (stmt != null) stmt.close();
+            if (conn != null) conn.close();
+        } catch (SQLException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                if (stmt != null) stmt.close();
-                if (conn != null) conn.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
         }
     }
+}
     
 
 	public static void main(String args[]) throws IOException {

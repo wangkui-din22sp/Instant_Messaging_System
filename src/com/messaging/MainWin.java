@@ -356,13 +356,13 @@ public class MainWin extends JFrame implements Runnable {
 				//friend online
 				if (received.substring(0, 6).equals("online")) {//Friend online notification
 					tempstr = received.substring(6).trim();
-					System.out.println("注锟斤拷:" + tempstr + "锟斤拷锟斤拷锟斤拷!");
+					System.out.println("通知:" + tempstr + "上线了!");
 					tempgetjicq = Integer.parseInt(tempstr);
 					System.out.println("id jicq2" + tempgetjicq);
 					do {
 						tx = Integer
 								.parseInt(friendjicq.get(index3).toString());
-						System.out.println("通知锟斤拷锟斤拷" + tx + "锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷");
+						System.out.println("通知好友" + tx + "上线了!");
 						if (tempgetjicq == tx)
 							break;
 						index3++;
@@ -407,7 +407,7 @@ public class MainWin extends JFrame implements Runnable {
 					tempgetjicq = Integer.parseInt(tempstr);
 					System.out.println("id" + tempgetjicq);
 					//JOptionPane.showMessageDialog(this,"锟秸碉拷"+tempgetjicq+"addyou","ok",JOptionPane.INFORMATION_MESSAGE);
-					oneaddme.setText(tempgetjicq + "锟斤拷锟斤拷锟轿�锟斤拷锟斤拷!");
+					oneaddme.setText(tempgetjicq + " added you as a friend!");
 					OneAddyou.setBounds(400, 300, 250, 200);
 					OneAddyou.show();
 
@@ -417,10 +417,10 @@ public class MainWin extends JFrame implements Runnable {
 					System.out.println(file);
 					SendFile sf = new SendFile(theip, file);
 					sf.fileClient();
-					System.out.println("锟斤拷锟斤拷锟侥硷拷1" + theip);
+					System.out.println("Sending file to " + theip);
 				
 				} else if (received.substring(0, 12).equals("readyreceive")) {
-					FileDialog fdsave = new FileDialog(this, "锟斤拷锟斤拷锟�", 1);
+					FileDialog fdsave = new FileDialog(this, "Save File", 1);
 					fdsave.setVisible(true);
 					String dir = fdsave.getDirectory();
 					String name = received.substring(12);
@@ -431,7 +431,7 @@ public class MainWin extends JFrame implements Runnable {
 						sendPacket = new DatagramPacket(data2, s.length(),
 								InetAddress.getByName(infofromip), sendPort);
 						sendSocket.send(sendPacket);
-						System.out.println("同锟斤拷锟斤拷锟�1" + received);
+						System.out.println("Ready to send " + received);
 					} catch (Exception e2) {
 						System.out.println(e2.toString());
 					}
