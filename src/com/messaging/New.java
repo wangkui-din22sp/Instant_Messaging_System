@@ -52,7 +52,7 @@ public class New extends JFrame {//Login window
 
 	sunPanel sunPanel = new sunPanel();
 
-	//���췽��
+	//Constructor
 	public New() {
 		enableEvents(AWTEvent.WINDOW_EVENT_MASK);
 		try {

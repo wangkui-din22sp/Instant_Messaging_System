@@ -11,7 +11,7 @@ import javax.swing.JList;
 import javax.swing.ListCellRenderer;
 import javax.swing.border.Border;
 
-//锟斤拷锟斤拷锟斤拷展DefaultListModel锟洁建锟斤拷锟叫憋拷
+//List model for found friends
 public class FindListModel extends DefaultListModel {
 	public FindListModel(Vector nickname, Vector sex, Vector place,
 			Vector Status) {
@@ -42,7 +42,7 @@ public class FindListModel extends DefaultListModel {
 	}
 }
 
-class FindListCellRenderer extends JLabel implements ListCellRenderer//锟斤拷锟斤拷锟角达拷锟斤拷锟叫憋拷锟斤拷染
+class FindListCellRenderer extends JLabel implements ListCellRenderer//Renderer for found friends list
 {
 	private Border lineBorder = BorderFactory.createLineBorder(Color.red, 2),
 			emptyBorder = BorderFactory.createEmptyBorder(2, 2, 2, 2);

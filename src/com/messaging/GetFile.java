@@ -38,7 +38,7 @@ public class GetFile {
 			server.close();
 
 		} catch (BindException be) {
-			System.err.println("锟矫端匡拷锟窖憋拷占锟斤拷" + be.toString());
+			System.err.println("端口被占用" + be.toString());
 		} catch (IOException ioe) {
 			System.err.println("I/O error - " + ioe);
 		}
