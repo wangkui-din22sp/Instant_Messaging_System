@@ -16,7 +16,7 @@ public class ListAllUsers {
                         // Use Windows Authentication
                         // Remove username and password, use integratedSecurity=true
         Connection conn = DriverManager.getConnection(
-            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true");
+            "jdbc:sqlserver://0.0.0.0:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true");
          Statement stmt = conn.createStatement();
          ResultSet rs = stmt.executeQuery("SELECT * FROM icq ORDER BY icqno")) {
         

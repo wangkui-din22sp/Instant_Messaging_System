@@ -155,37 +155,50 @@ public class New extends JFrame {//Login window
 
 	}
 
-	void login_mouseClicked(MouseEvent e) {//Login button
+	void login_mouseClicked(MouseEvent e) {
+    try {
+        System.out.println("Connecting to server: " + server + ":" + serport);
+        Socket socket = new Socket(InetAddress.getByName(server), serport);
+        System.out.println("Connected to server successfully");
 
-		try {
-			Socket socket = new Socket(InetAddress.getByName(server), serport);//Connect to server
+        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        PrintWriter out = new PrintWriter(new BufferedWriter(
+                new OutputStreamWriter(socket.getOutputStream())), true);
+        
+        // Convert password from char[] to String
+        String passwordStr = new String(password.getPassword());
+        
+        out.println("login");
+        out.println(jicq.getText());
+        out.println(passwordStr);
 
-			BufferedReader in = new BufferedReader(new InputStreamReader(socket
-					.getInputStream()));
-			PrintWriter out = new PrintWriter(new BufferedWriter(
-					new OutputStreamWriter(socket.getOutputStream())), true);
-			out.println("login");//Send login request
-			out.println(jicq.getText());
-			out.println(password.getPassword());
-
-			String str = " ";
-			
-			str = in.readLine().trim();//Read information from server
-			
-			if (str.equals("false"))
-				JOptionPane.showMessageDialog(this, "Login failed :-(", "ok",
-						JOptionPane.INFORMATION_MESSAGE);
-			else {//Login successful, open main window
-				this.dispose();
-				int g = Integer.parseInt(jicq.getText());
-				MainWin f2 = new MainWin(g, server, serport);
-				f2.setVisible(true);
-			}
-
-			
-		} catch (IOException e1) {
-		}
-	}
+        String str = in.readLine();
+        System.out.println("Login response: " + str);
+        
+        if (str == null) {
+            JOptionPane.showMessageDialog(this, "No response from server", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        } else if (str.equals("false")) {
+            JOptionPane.showMessageDialog(this, "Login failed: Invalid JICQ number or password", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        } else {
+            this.dispose();
+            int g = Integer.parseInt(jicq.getText());
+            MainWin f2 = new MainWin(g, server, serport);
+            f2.setVisible(true);
+        }
+        
+        socket.close();
+        
+    } catch (IOException e1) {
+        JOptionPane.showMessageDialog(this, 
+            "Cannot connect to server: " + e1.getMessage() + 
+            "\n\nPlease check:\n1. Server is running at " + server + ":" + serport + 
+            "\n2. Your internet connection\n3. Firewall settings", 
+            "Connection Error", JOptionPane.ERROR_MESSAGE);
+        e1.printStackTrace();
+    }
+}
 
 	void newuser_mouseClicked(MouseEvent e) {
 		this.dispose();

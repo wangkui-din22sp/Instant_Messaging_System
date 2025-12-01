@@ -44,7 +44,7 @@ public class Register extends JDialog {//Register window
 
 	Checkbox boy = new Checkbox("Male", true, sex);
 
-	Checkbox girl = new Checkbox("Female", true, sex);
+	Checkbox girl = new Checkbox("Female", false, sex);
 
 	JLabel jLabel8 = new JLabel();
 
@@ -152,65 +152,95 @@ public class Register extends JDialog {//Register window
 	}
 
 	void jButton1_mouseClicked(MouseEvent e) {
-		try {
-			System.out.println(sername);
-			System.out.println(serverport);
-			Socket socket = new Socket(InetAddress.getByName(sername),
-					serverport);//Create socket connection
+    try {
+        System.out.println("Attempting to connect to server: " + sername + ":" + serverport);
+        
+        // Test connection first
+        Socket socket = new Socket(InetAddress.getByName(sername), serverport);
+        System.out.println("Connected to server successfully");
 
-			BufferedReader in = new BufferedReader(new InputStreamReader(socket
-					.getInputStream()));
-			PrintWriter out = new PrintWriter(new BufferedWriter(
-					new OutputStreamWriter(socket.getOutputStream())), true);
-			String sex="Unknown";
-			if (girl.getState())
-				sex = "Female";
-			if (boy.getState())
-				sex = "Male";
-			if (icqno.getText().trim().equals("") || nickname.getText().trim().equals("")
-					|| password.getPassword().length == 0) {
-				JOptionPane.showMessageDialog(this, "QQ number, nickname, and password cannot be empty!", "ok",
-						JOptionPane.INFORMATION_MESSAGE);
-				return;
-			}
-			
+        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        PrintWriter out = new PrintWriter(new BufferedWriter(
+                new OutputStreamWriter(socket.getOutputStream())), true);
+        
+        // Fix checkbox logic
+        String sex = "Unknown";
+        if (girl.getState())
+            sex = "Female";
+        else if (boy.getState())
+            sex = "Male";
+            
+        // Validation
+        if (icqno.getText().trim().equals("") || nickname.getText().trim().equals("")
+                || password.getPassword().length == 0) {
+            JOptionPane.showMessageDialog(this, "QQ number, nickname, and password cannot be empty!", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            socket.close();
+            return;
+        }
 
-			out.println("new");//Create new user registration
-			out.println(icqno.getText().trim());
-			out.println(nickname.getText().trim());//User nickname information
-			out.println(password.getPassword());
-			out.println(email.getText().trim());
-			out.println(info.getText().trim());
-			out.println(place.getSelectedItem());
-			out.println(headpic.getSelectedIndex());//head pic index
-			out.println(sex.trim());
-			int no;
+        // Convert password from char[] to String - CRITICAL FIX
+        String passwordStr = new String(password.getPassword());
+        
+        System.out.println("Sending registration data:");
+        System.out.println("ICQ: " + icqno.getText().trim());
+        System.out.println("Nickname: " + nickname.getText().trim());
+        System.out.println("Password: " + passwordStr);
+        
+        out.println("new");//Create new user registration
+        out.println(icqno.getText().trim());
+        out.println(nickname.getText().trim());
+        out.println(passwordStr); // FIX: Use string instead of char array
+        out.println(email.getText().trim());
+        out.println(info.getText().trim());
+        out.println(place.getSelectedItem());
+        out.println(headpic.getSelectedIndex());
+        out.println(sex.trim());
 
-			no = Integer.parseInt(in.readLine());
+        // Read server response
+        String responseLine1 = in.readLine();
+        System.out.println("Server response 1: " + responseLine1);
+        
+        String responseLine2 = in.readLine();
+        System.out.println("Server response 2: " + responseLine2);
 
-			System.out.print(no);
+        if (responseLine1 == null || responseLine2 == null) {
+            JOptionPane.showMessageDialog(this, "No response from server", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            socket.close();
+            return;
+        }
 
-			String str = " ";
-			//do{
-			str = in.readLine().trim();//Read information from server
-			//Process information
-			if (str.equals("false"))
-				JOptionPane.showMessageDialog(this, "Registration failed, please try again :-(", "ok",
-						JOptionPane.INFORMATION_MESSAGE);
-			else {//Registration successful, open main window
-				JOptionPane.showMessageDialog(this,
-						"Congratulations on your successful registration! Your registration number is " + no, "ok",
-						JOptionPane.INFORMATION_MESSAGE);
+        if (responseLine1.equals("-1") || responseLine2.equals("false")) {
+            JOptionPane.showMessageDialog(this, "Registration failed. User might already exist or server error.", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        } else {
+            try {
+                int no = Integer.parseInt(responseLine1);
+                JOptionPane.showMessageDialog(this,
+                        "Congratulations! Registration successful! Your JICQ number is " + no, "Success",
+                        JOptionPane.INFORMATION_MESSAGE);
 
-				this.dispose();//Close registration window
-				MainWin f2 = new MainWin(no, sername, serverport);
-				f2.setVisible(true);
-			}
-			
-		} catch (IOException e1) {
-		}
-
-	}
+                this.dispose();
+                MainWin f2 = new MainWin(no, sername, serverport);
+                f2.setVisible(true);
+            } catch (NumberFormatException nfe) {
+                JOptionPane.showMessageDialog(this, "Invalid registration number received: " + responseLine1, "Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        }
+        
+        socket.close();
+        
+    } catch (IOException e1) {
+        JOptionPane.showMessageDialog(this, 
+            "Cannot connect to server at " + sername + ":" + serverport + 
+            "\nError: " + e1.getMessage() + 
+            "\n\nPlease check:\n1. Server is running\n2. IP address is correct\n3. Firewall allows connections", 
+            "Connection Error", JOptionPane.ERROR_MESSAGE);
+        e1.printStackTrace();
+    }
+}
 }
 
 class HeadPicCombobox extends DefaultComboBoxModel {//Head picture combo box

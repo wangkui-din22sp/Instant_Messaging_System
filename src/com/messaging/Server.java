@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Connection;
@@ -96,64 +97,84 @@ class ServerThread extends Thread { // Inherit from Thread
 
                 // Handle client new user registration request
                 // Handle client new user registration request
-                else if (str.equals("new")) {
-                    try {
-                        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        Connection c2 = DriverManager.getConnection(
-                            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
-                        );
-                        String newsql = "insert into icq(icqno,nickname,password,email,info,place,pic,sex) values(?,?,?,?,?,?,?,?)";
-                        PreparedStatement prepare2 = c2.prepareCall(newsql);
-                        int icqno = Integer.parseInt(in.readLine());
-                        String nickname = in.readLine().trim();
-                        String password = in.readLine().trim();
-                        String email = in.readLine().trim();
-                        String info = in.readLine().trim();
-                        String place = in.readLine().trim();
-                        int picindex = Integer.parseInt(in.readLine());
-                        String sex = in.readLine().trim();
-                        
-                        prepare2.clearParameters();
-                        prepare2.setInt(1, icqno);
-                        prepare2.setString(2, nickname);
-                        prepare2.setString(3, password);
-                        prepare2.setString(4, email);
-                        prepare2.setString(5, info);
-                        prepare2.setString(6, place);
-                        prepare2.setInt(7, picindex);
-                        prepare2.setString(8, sex);
-                        
-                        int r3 = prepare2.executeUpdate(); // Execute database insert
-                        
-                        if (r3 == 1) { // Success
-                            String sql2 = "select icqno from icq where nickname=?";
-                            PreparedStatement prepare3 = c2.prepareCall(sql2);
-                            prepare3.clearParameters();
-                            prepare3.setString(1, nickname);
-                            ResultSet r2 = prepare3.executeQuery();
-                            
-                            if (r2.next()) {
-                                no = r2.getInt(1);
-                                System.out.println("New user registered with ICQ: " + no);
-                            }
-                            
-                            out.println(no); // Send the ICQ number
-                            out.println("ok"); // Send success status
-                            r2.close();
-                            prepare3.close();
-                        } else {
-                            out.println("-1"); // Send error code instead of "false"
-                            out.println("false"); // Send failure status
-                        }
-                        
-                        c2.close();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        out.println("-1"); // Send error code instead of "false"
-                        out.println("false"); // Send failure status
-                    }
-                    socket.close();
-                } // End new user registration
+               else if (str.equals("new")) {
+    System.out.println("=== NEW USER REGISTRATION STARTED ===");
+    try {
+        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+        Connection c2 = DriverManager.getConnection(
+            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+        );
+        
+        // Read all registration data with debug output
+        int icqno = Integer.parseInt(in.readLine());
+        String nickname = in.readLine().trim();
+        String password = in.readLine().trim();
+        String email = in.readLine().trim();
+        String info = in.readLine().trim();
+        String place = in.readLine().trim();
+        int picindex = Integer.parseInt(in.readLine());
+        String sex = in.readLine().trim();
+        
+        System.out.println("Registration data received:");
+        System.out.println("  ICQ: " + icqno);
+        System.out.println("  Nickname: " + nickname);
+        System.out.println("  Password: " + password);
+        System.out.println("  Email: " + email);
+        System.out.println("  Info: " + info);
+        System.out.println("  Place: " + place);
+        System.out.println("  Pic: " + picindex);
+        System.out.println("  Sex: " + sex);
+        
+        String newsql = "insert into icq(icqno,nickname,password,email,info,place,pic,sex) values(?,?,?,?,?,?,?,?)";
+        PreparedStatement prepare2 = c2.prepareCall(newsql);
+        
+        prepare2.clearParameters();
+        prepare2.setInt(1, icqno);
+        prepare2.setString(2, nickname);
+        prepare2.setString(3, password);
+        prepare2.setString(4, email);
+        prepare2.setString(5, info);
+        prepare2.setString(6, place);
+        prepare2.setInt(7, picindex);
+        prepare2.setString(8, sex);
+        
+        int r3 = prepare2.executeUpdate();
+        System.out.println("Database insert result: " + r3 + " rows affected");
+        
+        if (r3 == 1) { // Success
+            // Get the assigned ICQ number (should be same as input)
+            String sql2 = "select icqno from icq where icqno=?";
+            PreparedStatement prepare3 = c2.prepareCall(sql2);
+            prepare3.clearParameters();
+            prepare3.setInt(1, icqno);
+            ResultSet r2 = prepare3.executeQuery();
+            
+            if (r2.next()) {
+                no = r2.getInt(1);
+                System.out.println("New user registered with ICQ: " + no);
+            }
+            
+            out.println(no); // Send the ICQ number
+            out.println("ok"); // Send success status
+            System.out.println("Registration SUCCESS - Sent: " + no + " and 'ok'");
+            r2.close();
+            prepare3.close();
+        } else {
+            out.println("-1"); // Send error code
+            out.println("false"); // Send failure status
+            System.out.println("Registration FAILED - Insert returned: " + r3);
+        }
+        
+        c2.close();
+    } catch (Exception e) {
+        System.out.println("Registration ERROR: " + e.getMessage());
+        e.printStackTrace();
+        out.println("-1");
+        out.println("false");
+    }
+    System.out.println("=== NEW USER REGISTRATION ENDED ===");
+    socket.close();
+} // End new user registration // End new user registration
 
                 // Handle user search for friends
                 else if (str.equals("find")) {
@@ -567,8 +588,9 @@ private static void initializeDatabase() {
 
 	public static void main(String args[]) throws IOException {
         initializeDatabase();
-		ServerSocket s = new ServerSocket(8080);//Create socket on port 8080
-		System.out.println("Server start.." + s);
+    // Bind to all network interfaces (0.0.0.0) instead of just localhost
+    ServerSocket s = new ServerSocket(8080, 0, InetAddress.getByName("0.0.0.0"));
+    System.out.println("Server started on all interfaces: " + s);
 		try {
 			while (true) {
 				Socket socket = s.accept();//Continuously listen for client requests

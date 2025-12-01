@@ -17,6 +17,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.Vector;
+import java.net.UnknownHostException;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -256,7 +257,7 @@ public class FindFriend2 extends JFrame {//
 void add_mousePressed(MouseEvent e) {
     int dd = list2.getSelectedIndex();
     
-    // Check if a friend is actually selected
+    // Check if a friend is selected
     if (dd == -1) {
         JOptionPane.showMessageDialog(this, "请先选择一个好友!", "提示", 
                 JOptionPane.WARNING_MESSAGE);
@@ -270,35 +271,64 @@ void add_mousePressed(MouseEvent e) {
         return;
     }
 
+    // Get the friend's JICQ number and verify it's not ourselves
+    Integer friendJicq = (Integer) jicq.get(dd);
+    if (friendJicq == myid) {
+        JOptionPane.showMessageDialog(this, "不能添加自己为好友!", "提示",
+                JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
     // 添加好友到数据库
     out.println("addfriend");
-    out.println(jicq.get(dd));
-    out.println(myid);
+    out.println(friendJicq);  // Friend's JICQ number
+    out.println(myid);        // Our JICQ number
     
     try {
-        String thename = in.readLine();
-        if (thename.equals("same")) {
+        String response = in.readLine();
+        if (response.equals("same")) {
             JOptionPane.showMessageDialog(this, "好友已存在", "提示",
                     JOptionPane.INFORMATION_MESSAGE);
-        } else if (thename.equals("add")) {
+        } else if (response.equals("add")) {
             // Add to temporary vectors
-            tmpjicq.add(jicq.get(dd));
+            tmpjicq.add(friendJicq);
             tmpname.add(nickname.get(dd));
             tmpip.add(ip.get(dd));
             tmppic.add(pic.get(dd));
             tmpemail.add(emails.get(dd));
             tmpinfo.add(infos.get(dd));
             
-            // Send notification to the added friend
-            String whoips = ip.get(dd).toString().trim();
-            String s = "oneaddyou" + myid;
-            byte[] data = s.getBytes();
-            sendPacket = new DatagramPacket(data, data.length, 
-                    InetAddress.getByName(whoips), sendPort);
-            sendSocket.send(sendPacket);
+            // Get friend's IP address - THIS IS THE KEY FIX
+            String friendIp = ip.get(dd).toString().trim();
+            System.out.println("Adding friend with JICQ: " + friendJicq + ", IP: " + friendIp);
             
-            JOptionPane.showMessageDialog(this, "好友添加成功!", "成功",
-                    JOptionPane.INFORMATION_MESSAGE);
+            // Send notification to the friend (user1)
+            if (friendIp == null || friendIp.isEmpty() || friendIp.equals("null") || friendIp.equals(" ")) {
+                System.out.println("无法发送通知: 好友IP地址为空");
+                JOptionPane.showMessageDialog(this, "好友添加成功，但好友当前不在线", "成功",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                try {
+                    String notification = "oneaddyou" + myid;
+                    byte[] data = notification.getBytes();
+                    System.out.println("Sending notification to IP: " + friendIp + " on port: " + sendPort);
+                    
+                    sendPacket = new DatagramPacket(data, data.length, 
+                            InetAddress.getByName(friendIp), sendPort);
+                    sendSocket.send(sendPacket);
+                    
+                    JOptionPane.showMessageDialog(this, "好友添加成功! 已发送通知", "成功",
+                            JOptionPane.INFORMATION_MESSAGE);
+                } catch (UnknownHostException ex) {
+                    System.out.println("无效的IP地址: " + friendIp);
+                    JOptionPane.showMessageDialog(this, "好友添加成功，但无法发送通知", "成功",
+                            JOptionPane.INFORMATION_MESSAGE);
+                } catch (IOException ex) {
+                    System.out.println("发送通知失败: " + ex.getMessage());
+                    JOptionPane.showMessageDialog(this, "好友添加成功，但通知发送失败", "成功",
+                            JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
         }
     } catch (IOException e2) {
         JOptionPane.showMessageDialog(this, "添加好友失败: " + e2.getMessage(), 
@@ -306,7 +336,6 @@ void add_mousePressed(MouseEvent e) {
         e2.printStackTrace();
     }
 }
-
 void look_mousePressed(MouseEvent e) {
     int selectedIndex = list2.getSelectedIndex();
     
