@@ -5,18 +5,29 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Properties;
+
+
 
 
 
 public class ListAllUsers {
 
     private static void listAllUsers() {
+        // Load PostgreSQL driver
+        try {
+            Class.forName("org.postgresql.Driver");
+        } catch (ClassNotFoundException e) {
+            System.err.println("PostgreSQL JDBC Driver not found.");
+            e.printStackTrace();
+            return;
+        }
     try (                        
         // PostgreSQL connection
         Connection conn = DriverManager.getConnection(
-            "jdbc:postgresql://localhost:5432/javaicq", 
+            "jdbc:postgresql://82.128.132.118:5432/javaicq", 
             "postgres", 
-            "admin");
+            "1234");
         Statement stmt = conn.createStatement();
         ResultSet rs = stmt.executeQuery("SELECT * FROM icq ORDER BY icqno")) {
         
