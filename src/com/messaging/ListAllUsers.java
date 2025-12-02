@@ -12,13 +12,13 @@ public class ListAllUsers {
 
     private static void listAllUsers() {
     try (                        
-
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
+        // PostgreSQL connection
         Connection conn = DriverManager.getConnection(
-            "jdbc:sqlserver://0.0.0.0:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true");
-         Statement stmt = conn.createStatement();
-         ResultSet rs = stmt.executeQuery("SELECT * FROM icq ORDER BY icqno")) {
+            "jdbc:postgresql://localhost:5432/javaicq", 
+            "postgres", 
+            "admin");
+        Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery("SELECT * FROM icq ORDER BY icqno")) {
         
         System.out.println("=== ALL USERS IN ICQ TABLE ===");
         int count = 0;

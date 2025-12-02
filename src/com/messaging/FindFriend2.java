@@ -32,167 +32,167 @@ import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
 
 public class FindFriend2 extends JFrame {//
-	JLabel jLabel1 = new JLabel();
+    JLabel jLabel1 = new JLabel();
 
-	JButton find2 = new JButton();
+    JButton find2 = new JButton();
 
-	JButton jButton1 = new JButton();
+    JButton jButton1 = new JButton();
 
-	JButton jButton2 = new JButton();
+    JButton jButton2 = new JButton();
 
-	JButton jButton3 = new JButton();
+    JButton jButton3 = new JButton();
 
-	JList list2;
+    JList list2;
 
-	////////////////// /
-	Vector nickname = new Vector();
+    ////////////////// /
+    Vector nickname = new Vector();
 
-	Vector sex = new Vector();
+    Vector sex = new Vector();
 
-	Vector place = new Vector();
+    Vector place = new Vector();
 
-	Vector jicq = new Vector();
+    Vector jicq = new Vector();
 
-	Vector ip = new Vector();
+    Vector ip = new Vector();
 
-	Vector pic = new Vector();
+    Vector pic = new Vector();
 
-	Vector status = new Vector();
+    Vector status = new Vector();
 
-	Vector emails = new Vector();
+    Vector emails = new Vector();
 
-	Vector infos = new Vector();
+    Vector infos = new Vector();
 
-	// 
-	Vector tmpjicq = new Vector();//jicqid
+    // 
+    Vector tmpjicq = new Vector();//jicqid
 
-	Vector tmpname = new Vector();//jicqname
+    Vector tmpname = new Vector();//jicqname
 
-	Vector tmpip = new Vector();//ip
+    Vector tmpip = new Vector();//ip
 
-	Vector tmppic = new Vector();//pic info
+    Vector tmppic = new Vector();//pic info
 
-	Vector tmpstatus = new Vector();//status
+    Vector tmpstatus = new Vector();//status
 
-	Vector tmpemail = new Vector();
+    Vector tmpemail = new Vector();
 
-	Vector tmpinfo = new Vector();
+    Vector tmpinfo = new Vector();
 
-	// 
-	Socket socket;
+    // 
+    Socket socket;
 
-	BufferedReader in;
+    BufferedReader in;
 
-	PrintWriter out;
+    PrintWriter out;
 
-	int myid;
+    int myid;
 
-	String serverhost;
+    String serverhost;
 
-	int servport;
+    int servport;
 
-	DatagramPacket sendPacket;
+    DatagramPacket sendPacket;
 
-	DatagramSocket sendSocket;
+    DatagramSocket sendSocket;
 
-	int sendPort = 5001;
+    int sendPort = 5001;
 
-	//////////////// //
-	JPopupMenu findmenu = new JPopupMenu();
+    ////////////////// //
+    JPopupMenu findmenu = new JPopupMenu();
 
-	JMenuItem look = new JMenuItem();
+    JMenuItem look = new JMenuItem();
 
-	JMenuItem add = new JMenuItem();
+    JMenuItem add = new JMenuItem();
 
-	public FindFriend2(int whoami, String host, int port) {//
-		enableEvents(AWTEvent.WINDOW_EVENT_MASK);
-		try {
-			serverhost = host;
-			servport = port;
-			myid = whoami;
-			jbInit();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}//
-		try {
-			socket = new Socket(InetAddress.getByName(serverhost), servport);
-			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
-					socket.getOutputStream())), true);
-			sendSocket = new DatagramSocket();
-		} catch (IOException e1) {
-			JOptionPane.showMessageDialog(this, "无法连接到服务器: " + e1.getMessage(), 
-					"连接错误", JOptionPane.ERROR_MESSAGE);
-			e1.printStackTrace();
+    public FindFriend2(int whoami, String host, int port) {//
+        enableEvents(AWTEvent.WINDOW_EVENT_MASK);
+        try {
+            serverhost = host;
+            servport = port;
+            myid = whoami;
+            jbInit();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }//
+        try {
+            socket = new Socket(InetAddress.getByName(serverhost), servport);
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+                    socket.getOutputStream())), true);
+            sendSocket = new DatagramSocket();
+        } catch (IOException e1) {
+            JOptionPane.showMessageDialog(this, "无法连接到服务器: " + e1.getMessage(), 
+                    "连接错误", JOptionPane.ERROR_MESSAGE);
+            e1.printStackTrace();
 }
-	}
+    }
 
-	private void jbInit() throws Exception {//
-		jLabel1.setText("List all registered users");
-		jLabel1.setBounds(new Rectangle(11, 11, 211, 18));
-		this.getContentPane().setLayout(new FlowLayout());
-		find2.setText("List all users");
-		find2.setBounds(new Rectangle(8, 289, 79, 29));
-		find2.addMouseListener(new java.awt.event.MouseAdapter() {
-			public void mouseClicked(MouseEvent e) {
-				find2_mouseClicked(e);
-			}
-		});
+    private void jbInit() throws Exception {//
+        jLabel1.setText("List all registered users");
+        jLabel1.setBounds(new Rectangle(11, 11, 211, 18));
+        this.getContentPane().setLayout(new FlowLayout());
+        find2.setText("List all users");
+        find2.setBounds(new Rectangle(8, 289, 79, 29));
+        find2.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                find2_mouseClicked(e);
+            }
+        });
 
-		jButton1.setBounds(new Rectangle(110, 288, 79, 29));
+        jButton1.setBounds(new Rectangle(110, 288, 79, 29));
 
-		jButton2.setBounds(new Rectangle(211, 285, 79, 29));
-		jButton3.setText("cancel");
-		jButton3.setBounds(new Rectangle(317, 289, 79, 29));
-		nickname = new Vector();
-		sex = new Vector();
-		place = new Vector();
-		status = new Vector();
-		ListModel model = new FindListModel(nickname, sex, place, status);//
-		ListCellRenderer renderer = new FindListCellRenderer();
-		list2 = new JList(model);
-		list2.setSize(200, 200);
-		list2.setBackground(new Color(255, 255, 210));
-		list2.setAlignmentX((float) 1.0);
-		list2.setAlignmentY((float) 1.0);
-		list2.setCellRenderer(renderer);
-		list2.setVisibleRowCount(7);
-		list2.addMouseListener(new java.awt.event.MouseAdapter() {
-			public void mousePressed(MouseEvent e) {
-				list2_mousePressed(e);
-			}
-		});
-		look.setText("check friend info");
-		look.addMouseListener(new java.awt.event.MouseAdapter() {
-			public void mousePressed(MouseEvent e) {
-				look_mousePressed(e);
-			}
-		});
-		add.setText("add friend");
-		add.addMouseListener(new java.awt.event.MouseAdapter() {
-			public void mousePressed(MouseEvent e) {
-				add_mousePressed(e);
-			}
-		});
-		this.getContentPane().add(jLabel1, null);
-		this.getContentPane().add(new JScrollPane(list2));
-		this.getContentPane().add(find2, null);
+        jButton2.setBounds(new Rectangle(211, 285, 79, 29));
+        jButton3.setText("cancel");
+        jButton3.setBounds(new Rectangle(317, 289, 79, 29));
+        nickname = new Vector();
+        sex = new Vector();
+        place = new Vector();
+        status = new Vector();
+        ListModel model = new FindListModel(nickname, sex, place, status);//
+        ListCellRenderer renderer = new FindListCellRenderer();
+        list2 = new JList(model);
+        list2.setSize(200, 200);
+        list2.setBackground(new Color(255, 255, 210));
+        list2.setAlignmentX((float) 1.0);
+        list2.setAlignmentY((float) 1.0);
+        list2.setCellRenderer(renderer);
+        list2.setVisibleRowCount(7);
+        list2.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(MouseEvent e) {
+                list2_mousePressed(e);
+            }
+        });
+        look.setText("check friend info");
+        look.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(MouseEvent e) {
+                look_mousePressed(e);
+            }
+        });
+        add.setText("add friend");
+        add.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(MouseEvent e) {
+                add_mousePressed(e);
+            }
+        });
+        this.getContentPane().add(jLabel1, null);
+        this.getContentPane().add(new JScrollPane(list2));
+        this.getContentPane().add(find2, null);
 
-		this.getContentPane().add(jButton3, null);
-		findmenu.add(look);
-		findmenu.add(add);
-	}//关闭窗口事件处理
+        this.getContentPane().add(jButton3, null);
+        findmenu.add(look);
+        findmenu.add(add);
+    }//关闭窗口事件处理
 
-	protected void processWindowEvent(WindowEvent e) {
-		super.processWindowEvent(e);
-		if (e.getID() == WindowEvent.WINDOW_CLOSING) {
-			this.dispose();
-			this.hide();
-		}
-	}
+    protected void processWindowEvent(WindowEvent e) {
+        super.processWindowEvent(e);
+        if (e.getID() == WindowEvent.WINDOW_CLOSING) {
+            this.dispose();
+            this.hide();
+        }
+    }
 
-	// 查找好友信息
-	void find2_mouseClicked(MouseEvent e) {
+    // 查找好友信息
+    void find2_mouseClicked(MouseEvent e) {
     // Clear previous data first
     nickname.clear(); sex.clear(); place.clear(); ip.clear();
     emails.clear(); infos.clear(); status.clear(); jicq.clear(); pic.clear();
@@ -246,14 +246,14 @@ public class FindFriend2 extends JFrame {//
     }
 }
 
-	// 显示好友菜单
-	void list2_mousePressed(MouseEvent e) {
-		findmenu.show(this, e.getX() + 20, e.getY() + 50);
+    // 显示好友菜单
+    void list2_mousePressed(MouseEvent e) {
+        findmenu.show(this, e.getX() + 20, e.getY() + 50);
 
-	}
+    }
 
-	//add frined
-	// 添加好友
+    //add frined
+    // 添加好友
 void add_mousePressed(MouseEvent e) {
     int dd = list2.getSelectedIndex();
     
@@ -379,5 +379,5 @@ void look_mousePressed(MouseEvent e) {
     JOptionPane.showMessageDialog(this, infoMessage, "好友信息 - " + friendName, 
             JOptionPane.INFORMATION_MESSAGE);
 }
-	//add friend end
+    //add friend end
 }

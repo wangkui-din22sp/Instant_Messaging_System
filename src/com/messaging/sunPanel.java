@@ -8,20 +8,20 @@ import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 
 public class sunPanel extends JPanel {
-	ImageIcon sun = new ImageIcon("sun.jpg");
+    ImageIcon sun = new ImageIcon("sun.jpg");
 
-	private int sun_smallh = sun.getIconWidth();
+    private int sun_smallh = sun.getIconWidth();
 
-	private int sun_smallw = sun.getIconHeight();
+    private int sun_smallw = sun.getIconHeight();
 
-	FlowLayout flowLayout1 = new FlowLayout();
+    FlowLayout flowLayout1 = new FlowLayout();
 
-	public void paintComponent(Graphics g) {
+    public void paintComponent(Graphics g) {
 
-		super.paintComponents(g);
-		Dimension size = getSize();
-		for (int row = 0; row < size.height; row += sun_smallh)
-			for (int col = 2; col < size.width; col += sun_smallw)
-				sun.paintIcon(this, g, row, col);
-	}
+        super.paintComponents(g);
+        Dimension size = getSize();
+        for (int row = 0; row < size.height; row += sun_smallh)
+            for (int col = 2; col < size.width; col += sun_smallw)
+                sun.paintIcon(this, g, row, col);
+    }
 }

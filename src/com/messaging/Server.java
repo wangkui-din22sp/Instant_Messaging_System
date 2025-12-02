@@ -37,13 +37,13 @@ class ServerThread extends Thread { // Inherit from Thread
                 if (str.equals("end")) break; // If "end", close connection
                 else if (str.equals("login")) { // If login request
                     try {
-                        //Class.forName("sun.jdbc.odbc.JdbcOdbcDriver"); // Load database driver
-                        //Connection c = DriverManager.getConnection("jdbc:odbc:javaicq", "sa", ""); // Connect to database
-                        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
+                        // Load PostgreSQL driver
+                        Class.forName("org.postgresql.Driver");
+                        // Connect to PostgreSQL database
                         Connection c = DriverManager.getConnection(
-                            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+                            "jdbc:postgresql://localhost:5432/javaicq",
+                            "postgres",
+                            "admin"
                         );
                         
                         String sql = "select nickname,password from icq where icqno=?"; // Prepare to select nickname and password from database
@@ -72,12 +72,12 @@ class ServerThread extends Thread { // Inherit from Thread
                                 int set = prest.executeUpdate();
                                 System.out.println("ip=" + socket.getInetAddress().getHostAddress() + " " + set);
                                 // Set status online
-                                String status = "update icq set status=1 where icqno=?";
+                                String status = "update icq set status=true where icqno=?";
                                 PreparedStatement prest2 = c.prepareCall(status);
                                 prest2.clearParameters();
                                 prest2.setInt(1, g);
                                 int set2 = prest2.executeUpdate();
-                                System.out.println("status = 1 " + set2);
+                                System.out.println("status = true " + set2);
                             } else {
                                 out.println("false"); // Otherwise tell client failure
                             }
@@ -100,9 +100,11 @@ class ServerThread extends Thread { // Inherit from Thread
                else if (str.equals("new")) {
     System.out.println("=== NEW USER REGISTRATION STARTED ===");
     try {
-        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+        Class.forName("org.postgresql.Driver");
         Connection c2 = DriverManager.getConnection(
-            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+            "jdbc:postgresql://localhost:5432/javaicq",
+            "postgres",
+            "admin"
         );
         
         // Read all registration data with debug output
@@ -179,13 +181,11 @@ class ServerThread extends Thread { // Inherit from Thread
                 // Handle user search for friends
                 else if (str.equals("find")) {
                     try {
-                        // Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
-                        // Connection c3 = DriverManager.getConnection("jdbc:odbc:javaicq", "sa", "");
-                        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
+                        Class.forName("org.postgresql.Driver");
                         Connection c3 = DriverManager.getConnection(
-                            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+                            "jdbc:postgresql://localhost:5432/javaicq",
+                            "postgres",
+                            "admin"
                         );
                         // Connect to database and return other users' nickname, gender, hometown, personal info, etc.
                         String find = "select nickname,sex,place,ip,email,info,status from icq";
@@ -198,7 +198,9 @@ class ServerThread extends Thread { // Inherit from Thread
                             out.println(result.getString("ip"));
                             out.println(result.getString("email"));
                             out.println(result.getString("info"));
-                            out.println(result.getString("status"));
+                            // PostgreSQL boolean to string conversion
+                            boolean statusBool = result.getBoolean("status");
+                            out.println(statusBool ? "1" : "0");
                         } // End while
                         out.println("over");
                         int d, x;
@@ -228,12 +230,11 @@ class ServerThread extends Thread { // Inherit from Thread
                 // Handle reading friend data when user logs in
                 else if (str.equals("friend")) {
                     try {
-                        // Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
-                        // Connection c4 = DriverManager.getConnection("jdbc:odbc:javaicq", "sa", "");                        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
+                        Class.forName("org.postgresql.Driver");
                         Connection c4 = DriverManager.getConnection(
-                            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+                            "jdbc:postgresql://localhost:5432/javaicq",
+                            "postgres",
+                            "admin"
                         );
                         // Connect to friend table and return user's friend list
                         String friend = "select friend from friend where icqno=?";
@@ -284,13 +285,11 @@ class ServerThread extends Thread { // Inherit from Thread
                 else if (str.equals("addfriend")) {
                     System.out.println("add");
                     try {
-                        // Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
-                        // Connection c6 = DriverManager.getConnection("jdbc:odbc:javaicq", "sa", "");
-                        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
+                        Class.forName("org.postgresql.Driver");
                         Connection c6 = DriverManager.getConnection(
-                            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+                            "jdbc:postgresql://localhost:5432/javaicq",
+                            "postgres",
+                            "admin"
                         );
                         // Connect to database, add record to friend table based on user and friend numbers
                         int friendicqno = Integer.parseInt(in.readLine());
@@ -334,13 +333,11 @@ class ServerThread extends Thread { // Inherit from Thread
                 else if (str.equals("addnewfriend")) {
                     System.out.println("add");
                     try {
-                        // Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
-                        // Connection c6 = DriverManager.getConnection("jdbc:odbc:javaicq", "sa", "");
-                        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
+                        Class.forName("org.postgresql.Driver");
                         Connection c6 = DriverManager.getConnection(
-                            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+                            "jdbc:postgresql://localhost:5432/javaicq",
+                            "postgres",
+                            "admin"
                         );
                         // Connect to database, add record to friend table based on user and friend numbers
                         int friendicqno = Integer.parseInt(in.readLine());
@@ -386,13 +383,11 @@ class ServerThread extends Thread { // Inherit from Thread
                 else if (str.equals("delfriend")) {
                     System.out.println("del");
                     try {
-                        // Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
-                        // Connection c7 = DriverManager.getConnection("jdbc:odbc:javaicq", "sa", "");
-                        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
+                        Class.forName("org.postgresql.Driver");
                         Connection c7 = DriverManager.getConnection(
-                            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+                            "jdbc:postgresql://localhost:5432/javaicq",
+                            "postgres",
+                            "admin"
                         );
                         // Connect to database, delete record from friend table based on user and friend numbers
                         int friendicqno = Integer.parseInt(in.readLine());
@@ -416,17 +411,15 @@ class ServerThread extends Thread { // Inherit from Thread
                 // Handle user logout
                 else if (str.equals("logout")) {
                     try {
-                        // Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
-                        // Connection c8 = DriverManager.getConnection("jdbc:odbc:javaicq", "sa", "");
-                        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
+                        Class.forName("org.postgresql.Driver");
                         Connection c8 = DriverManager.getConnection(
-                            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+                            "jdbc:postgresql://localhost:5432/javaicq",
+                            "postgres",
+                            "admin"
                         );
-                        // Connect to database, set status to 0 and clear IP for the user
+                        // Connect to database, set status to false and clear IP for the user
                         int myicqno = Integer.parseInt(in.readLine());
-                        String status = "update icq set status=0 , ip=' ' where icqno=?";
+                        String status = "update icq set status=false, ip=' ' where icqno=?";
                         PreparedStatement prest8 = c8.prepareCall(status);
                         prest8.clearParameters();
                         prest8.setInt(1, myicqno);
@@ -442,13 +435,11 @@ class ServerThread extends Thread { // Inherit from Thread
                 // Handle who added me as friend so I can notify them when I come online
                 else if (str.equals("getwhoaddme")) {
                     try {
-                        // Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
-                        // Connection c9 = DriverManager.getConnection("jdbc:odbc:javaicq", "sa", "");
-                        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-                        // Use Windows Authentication
-                        // Remove username and password, use integratedSecurity=true
+                        Class.forName("org.postgresql.Driver");
                         Connection c9 = DriverManager.getConnection(
-                            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
+                            "jdbc:postgresql://localhost:5432/javaicq",
+                            "postgres",
+                            "admin"
                         );
                         // Connect to database, find who added me based on my number
                         int myicqno = Integer.parseInt(in.readLine());
@@ -498,111 +489,107 @@ class ServerThread extends Thread { // Inherit from Thread
 
 public class Server {
     
-    // Database initialization method
-    // Database initialization method - FIXED VERSION
-private static void initializeDatabase() {
-    Connection conn = null;
-    Statement stmt = null;
-    
-    try {
-        // First connect to master database without specifying database name
-        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-        conn = DriverManager.getConnection(
-            "jdbc:sqlserver://localhost:1433;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
-        );
-        stmt = conn.createStatement();
+    // Database initialization method - PostgreSQL version
+    private static void initializeDatabase() {
+        Connection conn = null;
+        Statement stmt = null;
         
-        System.out.println("Checking database status...");
-        
-        // Check if database exists
-        String checkDBSQL = "SELECT name FROM sys.databases WHERE name = 'javaicq'";
-        ResultSet rs = stmt.executeQuery(checkDBSQL);
-        
-        if (!rs.next()) {
-            // Database doesn't exist, create it
-            System.out.println("javaicq database not found. Creating new database...");
-            String createDBSQL = "CREATE DATABASE javaicq";
-            stmt.executeUpdate(createDBSQL);
-            System.out.println("javaicq database created successfully");
-        } else {
-            System.out.println("javaicq database already exists");
-        }
-        rs.close();
-        
-        // Close connection to master
-        stmt.close();
-        conn.close();
-        
-        // Now connect to the javaicq database
-        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-        conn = DriverManager.getConnection(
-            "jdbc:sqlserver://localhost:1433;databaseName=javaicq;trustServerCertificate=true;encrypt=false;integratedSecurity=true"
-        );
-        
-        stmt = conn.createStatement();
-        
-        // Create icq table if it doesn't exist
-        String createIcqTable = 
-            "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='icq' AND xtype='U') " +
-            "CREATE TABLE icq (" +
-            "    icqno INT PRIMARY KEY," +
-            "    nickname VARCHAR(50)," +
-            "    password VARCHAR(50)," +
-            "    email VARCHAR(100)," +
-            "    info VARCHAR(255)," +
-            "    place VARCHAR(100)," +
-            "    pic INT," +
-            "    sex VARCHAR(10)," +
-            "    ip VARCHAR(50)," +
-            "    status BIT DEFAULT 0" +
-            ")";
-        stmt.executeUpdate(createIcqTable);
-        System.out.println("icq table checked/created successfully");
-        
-        // Create friend table if it doesn't exist
-        String createFriendTable = 
-            "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='friend' AND xtype='U') " +
-            "CREATE TABLE friend (" +
-            "    icqno INT," +
-            "    friend INT," +
-            "    PRIMARY KEY (icqno, friend)" +
-            ")";
-        stmt.executeUpdate(createFriendTable);
-        System.out.println("friend table checked/created successfully");
-        
-        System.out.println("Database initialization completed successfully!");
-        
-    } catch (Exception e) {
-        System.err.println("Database initialization failed: " + e.getMessage());
-        e.printStackTrace();
-    } finally {
         try {
-            if (stmt != null) stmt.close();
-            if (conn != null) conn.close();
-        } catch (SQLException e) {
+            // PostgreSQL driver
+            Class.forName("org.postgresql.Driver");
+            
+            // First connect to postgres database
+            conn = DriverManager.getConnection(
+                "jdbc:postgresql://localhost:5432/postgres",
+                "postgres",
+                "admin"
+            );
+            
+            // Check if database exists
+            stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT 1 FROM pg_database WHERE datname = 'javaicq'");
+            
+            if (!rs.next()) {
+                // Create database if it doesn't exist
+                stmt.executeUpdate("CREATE DATABASE javaicq");
+                System.out.println("javaicq database created successfully");
+            } else {
+                System.out.println("javaicq database already exists");
+            }
+            
+            rs.close();
+            stmt.close();
+            conn.close();
+            
+            // Now connect to the javaicq database
+            conn = DriverManager.getConnection(
+                "jdbc:postgresql://localhost:5432/javaicq",
+                "postgres",
+                "admin"
+            );
+            
+            stmt = conn.createStatement();
+            
+            // Create icq table if it doesn't exist
+            String createIcqTable = 
+                "CREATE TABLE IF NOT EXISTS icq (" +
+                "    icqno INT PRIMARY KEY," +
+                "    nickname VARCHAR(50)," +
+                "    password VARCHAR(50)," +
+                "    email VARCHAR(100)," +
+                "    info VARCHAR(255)," +
+                "    place VARCHAR(100)," +
+                "    pic INT," +
+                "    sex VARCHAR(10)," +
+                "    ip VARCHAR(50)," +
+                "    status BOOLEAN DEFAULT false" +
+                ")";
+            stmt.executeUpdate(createIcqTable);
+            System.out.println("icq table checked/created successfully");
+            
+            // Create friend table if it doesn't exist
+            String createFriendTable = 
+                "CREATE TABLE IF NOT EXISTS friend (" +
+                "    icqno INT," +
+                "    friend INT," +
+                "    PRIMARY KEY (icqno, friend)" +
+                ")";
+            stmt.executeUpdate(createFriendTable);
+            System.out.println("friend table checked/created successfully");
+            
+            System.out.println("Database initialization completed successfully!");
+            
+        } catch (Exception e) {
+            System.err.println("Database initialization failed: " + e.getMessage());
             e.printStackTrace();
+        } finally {
+            try {
+                if (stmt != null) stmt.close();
+                if (conn != null) conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
-}
     
 
-	public static void main(String args[]) throws IOException {
+    public static void main(String args[]) throws IOException {
         initializeDatabase();
-    // Bind to all network interfaces (0.0.0.0) instead of just localhost
-    ServerSocket s = new ServerSocket(8080, 0, InetAddress.getByName("0.0.0.0"));
-    System.out.println("Server started on all interfaces: " + s);
-		try {
-			while (true) {
-				Socket socket = s.accept();//Continuously listen for client requests
-				System.out.println("Connection accepted:" + socket);
-				try {
-					new ServerThread(socket);//Create new thread
-				} catch (IOException e) {
-					socket.close();
-				}
-			}
-		} finally {
-			s.close();
-		}//Catch or finally
-	}
+        // Bind to all network interfaces (0.0.0.0) instead of just localhost
+        ServerSocket s = new ServerSocket(8080, 0, InetAddress.getByName("0.0.0.0"));
+        System.out.println("Server started on all interfaces: " + s);
+        try {
+            while (true) {
+                Socket socket = s.accept();//Continuously listen for client requests
+                System.out.println("Connection accepted:" + socket);
+                try {
+                    new ServerThread(socket);//Create new thread
+                } catch (IOException e) {
+                    socket.close();
+                }
+            }
+        } finally {
+            s.close();
+        }//Catch or finally
+    }
 }//End of server program
