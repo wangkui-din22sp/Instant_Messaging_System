@@ -111,7 +111,8 @@ public class New extends JFrame {//Login window
         });
         jLabel6.setText("Server IP:");
         jLabel6.setBounds(new Rectangle(20, 62, 41, 18));
-        servername.setText("0.0.0.0");
+        // servername.setText("37.136.80.13"); //82.128.132.118
+        servername.setText("82.128.132.118"); 
         servername.setBounds(new Rectangle(73, 62, 102, 22));
         jLabel7.setText("Port:");
         jLabel7.setBounds(new Rectangle(191, 62, 41, 18));

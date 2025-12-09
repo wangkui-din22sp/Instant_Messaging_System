@@ -97,17 +97,17 @@ class ServerThread extends Thread { // Inherit from Thread
 
                 // Handle client new user registration request
                 // Handle client new user registration request
-               else if (str.equals("new")) {
+      else if (str.equals("new")) {
     System.out.println("=== NEW USER REGISTRATION STARTED ===");
     try {
         Class.forName("org.postgresql.Driver");
         Connection c2 = DriverManager.getConnection(
             "jdbc:postgresql://localhost:5432/javaicq",
             "postgres",
-            "admin"
+            "1234"  // Make sure this matches your actual password
         );
         
-        // Read all registration data with debug output
+        // Read all registration data
         int icqno = Integer.parseInt(in.readLine());
         String nickname = in.readLine().trim();
         String password = in.readLine().trim();
@@ -116,6 +116,9 @@ class ServerThread extends Thread { // Inherit from Thread
         String place = in.readLine().trim();
         int picindex = Integer.parseInt(in.readLine());
         String sex = in.readLine().trim();
+        
+        // GET CLIENT IP ADDRESS
+        String clientIP = socket.getInetAddress().getHostAddress();
         
         System.out.println("Registration data received:");
         System.out.println("  ICQ: " + icqno);
@@ -126,8 +129,10 @@ class ServerThread extends Thread { // Inherit from Thread
         System.out.println("  Place: " + place);
         System.out.println("  Pic: " + picindex);
         System.out.println("  Sex: " + sex);
+        System.out.println("  IP: " + clientIP);
         
-        String newsql = "insert into icq(icqno,nickname,password,email,info,place,pic,sex) values(?,?,?,?,?,?,?,?)";
+        // UPDATED: Include ip field
+        String newsql = "insert into icq(icqno,nickname,password,email,info,place,pic,sex,ip) values(?,?,?,?,?,?,?,?,?)";
         PreparedStatement prepare2 = c2.prepareCall(newsql);
         
         prepare2.clearParameters();
@@ -139,32 +144,15 @@ class ServerThread extends Thread { // Inherit from Thread
         prepare2.setString(6, place);
         prepare2.setInt(7, picindex);
         prepare2.setString(8, sex);
+        prepare2.setString(9, clientIP);  // Set IP address
         
         int r3 = prepare2.executeUpdate();
         System.out.println("Database insert result: " + r3 + " rows affected");
         
-        if (r3 == 1) { // Success
-            // Get the assigned ICQ number (should be same as input)
-            String sql2 = "select icqno from icq where icqno=?";
-            PreparedStatement prepare3 = c2.prepareCall(sql2);
-            prepare3.clearParameters();
-            prepare3.setInt(1, icqno);
-            ResultSet r2 = prepare3.executeQuery();
-            
-            if (r2.next()) {
-                no = r2.getInt(1);
-                System.out.println("New user registered with ICQ: " + no);
-            }
-            
-            out.println(no); // Send the ICQ number
-            out.println("ok"); // Send success status
-            System.out.println("Registration SUCCESS - Sent: " + no + " and 'ok'");
-            r2.close();
-            prepare3.close();
+        if (r3 == 1) {
+            // ... rest of success handling
         } else {
-            out.println("-1"); // Send error code
-            out.println("false"); // Send failure status
-            System.out.println("Registration FAILED - Insert returned: " + r3);
+            // ... error handling
         }
         
         c2.close();
@@ -174,7 +162,6 @@ class ServerThread extends Thread { // Inherit from Thread
         out.println("-1");
         out.println("false");
     }
-    System.out.println("=== NEW USER REGISTRATION ENDED ===");
     socket.close();
 } // End new user registration // End new user registration
 
