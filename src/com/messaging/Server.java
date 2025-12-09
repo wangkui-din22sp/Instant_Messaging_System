@@ -43,7 +43,7 @@ class ServerThread extends Thread { // Inherit from Thread
                         Connection c = DriverManager.getConnection(
                             "jdbc:postgresql://localhost:5432/javaicq",
                             "postgres",
-                            "admin"
+                            "1234"
                         );
                         
                         String sql = "select nickname,password from icq where icqno=?"; // Prepare to select nickname and password from database
@@ -149,12 +149,30 @@ class ServerThread extends Thread { // Inherit from Thread
         int r3 = prepare2.executeUpdate();
         System.out.println("Database insert result: " + r3 + " rows affected");
         
-        if (r3 == 1) {
-            // ... rest of success handling
+        if (r3 == 1) { // Success
+            // Get the assigned ICQ number (should be same as input)
+            String sql2 = "select icqno from icq where icqno=?";
+            PreparedStatement prepare3 = c2.prepareCall(sql2);
+            prepare3.clearParameters();
+            prepare3.setInt(1, icqno);
+            ResultSet r2 = prepare3.executeQuery();
+            
+            if (r2.next()) {
+                no = r2.getInt(1);
+                System.out.println("New user registered with ICQ: " + no);
+            }
+            
+            out.println(no); // Send the ICQ number
+            out.println("ok"); // Send success status
+            System.out.println("Registration SUCCESS - Sent: " + no + " and 'ok'");
+            r2.close();
+            prepare3.close();
         } else {
-            // ... error handling
+            out.println("-1"); // Send error code
+            out.println("false"); // Send failure status
+            System.out.println("Registration FAILED - Insert returned: " + r3);
         }
-        
+        System.out.println("=== NEW USER REGISTRATION ENDED ===");
         c2.close();
     } catch (Exception e) {
         System.out.println("Registration ERROR: " + e.getMessage());
@@ -172,7 +190,7 @@ class ServerThread extends Thread { // Inherit from Thread
                         Connection c3 = DriverManager.getConnection(
                             "jdbc:postgresql://localhost:5432/javaicq",
                             "postgres",
-                            "admin"
+                            "1234"
                         );
                         // Connect to database and return other users' nickname, gender, hometown, personal info, etc.
                         String find = "select nickname,sex,place,ip,email,info,status from icq";
@@ -221,7 +239,7 @@ class ServerThread extends Thread { // Inherit from Thread
                         Connection c4 = DriverManager.getConnection(
                             "jdbc:postgresql://localhost:5432/javaicq",
                             "postgres",
-                            "admin"
+                            "1234"
                         );
                         // Connect to friend table and return user's friend list
                         String friend = "select friend from friend where icqno=?";
@@ -276,7 +294,7 @@ class ServerThread extends Thread { // Inherit from Thread
                         Connection c6 = DriverManager.getConnection(
                             "jdbc:postgresql://localhost:5432/javaicq",
                             "postgres",
-                            "admin"
+                            "1234"
                         );
                         // Connect to database, add record to friend table based on user and friend numbers
                         int friendicqno = Integer.parseInt(in.readLine());
@@ -324,7 +342,7 @@ class ServerThread extends Thread { // Inherit from Thread
                         Connection c6 = DriverManager.getConnection(
                             "jdbc:postgresql://localhost:5432/javaicq",
                             "postgres",
-                            "admin"
+                            "1234"
                         );
                         // Connect to database, add record to friend table based on user and friend numbers
                         int friendicqno = Integer.parseInt(in.readLine());
@@ -374,7 +392,7 @@ class ServerThread extends Thread { // Inherit from Thread
                         Connection c7 = DriverManager.getConnection(
                             "jdbc:postgresql://localhost:5432/javaicq",
                             "postgres",
-                            "admin"
+                            "1234"
                         );
                         // Connect to database, delete record from friend table based on user and friend numbers
                         int friendicqno = Integer.parseInt(in.readLine());
@@ -402,7 +420,7 @@ class ServerThread extends Thread { // Inherit from Thread
                         Connection c8 = DriverManager.getConnection(
                             "jdbc:postgresql://localhost:5432/javaicq",
                             "postgres",
-                            "admin"
+                            "1234"
                         );
                         // Connect to database, set status to false and clear IP for the user
                         int myicqno = Integer.parseInt(in.readLine());
@@ -426,7 +444,7 @@ class ServerThread extends Thread { // Inherit from Thread
                         Connection c9 = DriverManager.getConnection(
                             "jdbc:postgresql://localhost:5432/javaicq",
                             "postgres",
-                            "admin"
+                            "1234"
                         );
                         // Connect to database, find who added me based on my number
                         int myicqno = Integer.parseInt(in.readLine());
@@ -489,7 +507,7 @@ public class Server {
             conn = DriverManager.getConnection(
                 "jdbc:postgresql://localhost:5432/postgres",
                 "postgres",
-                "admin"
+                "1234"
             );
             
             // Check if database exists
@@ -512,7 +530,7 @@ public class Server {
             conn = DriverManager.getConnection(
                 "jdbc:postgresql://localhost:5432/javaicq",
                 "postgres",
-                "admin"
+                "1234"
             );
             
             stmt = conn.createStatement();
