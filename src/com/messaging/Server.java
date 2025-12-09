@@ -424,7 +424,7 @@ class ServerThread extends Thread { // Inherit from Thread
                         );
                         // Connect to database, set status to false and clear IP for the user
                         int myicqno = Integer.parseInt(in.readLine());
-                        String status = "update icq set status=false, ip=' ' where icqno=?";
+                        String status = "update icq set status=false where icqno=?";
                         PreparedStatement prest8 = c8.prepareCall(status);
                         prest8.clearParameters();
                         prest8.setInt(1, myicqno);
