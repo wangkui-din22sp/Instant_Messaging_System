@@ -940,48 +940,84 @@ public class MainWin extends JFrame implements Runnable {
     }
 
     //update friend info;
-    void update_mousePressed(MouseEvent e) {//Update friend information
-        tempname = findf.tmpname;
-        tempjicq = findf.tmpjicq;
-        tempip = findf.tmpip;
-        temppic = findf.tmppic;
-        tempstatus = findf.tmpstatus;
-        tempemail = findf.tmpemail;
-        tempinfo = findf.tmpinfo;
-        DefaultListModel mm2 = (DefaultListModel) list.getModel();
-        int picid = 0;
-        for (int p = 0; p < tempname.size(); p++) {
-            picid = Integer.parseInt(temppic.get(p).toString());
-            if (tempstatus.get(p).equals("1")) {
-                mm2.addElement(new Object[] { tempname.get(p),
-                        new ImageIcon(picsonline[picid]) });
-            } else {
-                mm2.addElement(new Object[] { tempname.get(p),
-                        new ImageIcon(picsoffline[picid]) });
-            }
-            
-        }//for
-        //add to friendlist
-        for (int k = 0; k < tempname.size(); k++) {
-            friendnames.add(tempname.get(k));
-            friendjicq.add(tempjicq.get(k));
-            friendips.add(tempip.get(k));
-            picno.add(temppic.get(k));
-            status.add(tempstatus.get(k));
-            friendemail.add(tempemail.get(k));
-            friendinfo.add(tempinfo.get(k));
-        }//for
-        //clean tmp
-        for (int p = 0; p < tempname.size(); p++) {
-            findf.tmpip.removeAllElements();
-            findf.tmpjicq.removeAllElements();
-            findf.tmpname.removeAllElements();
-            findf.tmppic.removeAllElements();
-            findf.tmpstatus.removeAllElements();
-            findf.tmpemail.removeAllElements();
-            findf.tmpinfo.removeAllElements();
-        }
+void update_mousePressed(MouseEvent e) {//Update friend information
+    tempname = findf.tmpname;
+    tempjicq = findf.tmpjicq;
+    tempip = findf.tmpip;
+    temppic = findf.tmppic;
+    tempstatus = findf.tmpstatus;
+    tempemail = findf.tmpemail;
+    tempinfo = findf.tmpinfo;
+    
+    // Check if there are any new friends to update
+    if (tempname.isEmpty()) {
+        JOptionPane.showMessageDialog(this, 
+            "没有找到新的好友可以更新", 
+            "信息", 
+            JOptionPane.INFORMATION_MESSAGE);
+        return;
     }
+    
+    DefaultListModel mm2 = (DefaultListModel) list.getModel();
+    int picid = 0;
+    for (int p = 0; p < tempname.size(); p++) {
+        // Ensure we have picture info for this friend
+        if (p < temppic.size()) {
+            picid = Integer.parseInt(temppic.get(p).toString());
+        } else {
+            picid = 0; // Default picture
+        }
+        
+        if (tempstatus.get(p).equals("1")) {
+            mm2.addElement(new Object[] { tempname.get(p),
+                    new ImageIcon(picsonline[picid]) });
+        } else {
+            mm2.addElement(new Object[] { tempname.get(p),
+                    new ImageIcon(picsoffline[picid]) });
+        }
+        
+    }//for
+    
+    // Add to friend list vectors
+    for (int k = 0; k < tempname.size(); k++) {
+        friendnames.add(tempname.get(k));
+        friendjicq.add(tempjicq.get(k));
+        friendips.add(tempip.get(k));
+        
+        if (k < temppic.size()) {
+            picno.add(temppic.get(k));
+        } else {
+            picno.add(new Integer(0));
+        }
+        
+        if (k < tempstatus.size()) {
+            status.add(tempstatus.get(k));
+        } else {
+            status.add("0"); // Default to offline
+        }
+        
+        if (k < tempemail.size()) {
+            friendemail.add(tempemail.get(k));
+        } else {
+            friendemail.add("");
+        }
+        
+        if (k < tempinfo.size()) {
+            friendinfo.add(tempinfo.get(k));
+        } else {
+            friendinfo.add("");
+        }
+    }//for
+    
+    // Clean temporary vectors
+    findf.tmpip.clear();
+    findf.tmpjicq.clear();
+    findf.tmpname.clear();
+    findf.tmppic.clear();
+    findf.tmpstatus.clear();
+    findf.tmpemail.clear();
+    findf.tmpinfo.clear();
+}
 
     //delete freind
     void delfriend_mousePressed(MouseEvent e) {//Delete friend

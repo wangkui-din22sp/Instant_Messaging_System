@@ -204,6 +204,7 @@ public class FindFriend2 extends JFrame {//
     
     try {
         String s;
+        int count = 0;
         // read find info - first set of data
         do {
             s = in.readLine();
@@ -216,17 +217,18 @@ public class FindFriend2 extends JFrame {//
             emails.add(in.readLine());
             infos.add(in.readLine());
             status.add(in.readLine()); // String status
+            count++;
         } while (!s.equals("over"));
         
         // read their jicqno - second set of data
         int theirjicq, picinfo;
         String sta;
-        for (int x = 0; x < nickname.size(); x++) {
+        for (int x = 0; x < count; x++) {
             theirjicq = Integer.parseInt(in.readLine());
-            jicq.add(theirjicq);
+            jicq.add(new Integer(theirjicq));
             
             picinfo = Integer.parseInt(in.readLine());
-            pic.add(picinfo);
+            pic.add(new Integer(picinfo));
             
             sta = in.readLine(); // Read but don't store in status vector
             // status vector already has the string status from first set
@@ -265,7 +267,7 @@ void add_mousePressed(MouseEvent e) {
     }
     
     // Check if vectors have data at the selected index
-    if (dd >= jicq.size() || dd >= nickname.size() || dd >= ip.size()) {
+    if (dd >= jicq.size() || dd >= nickname.size() || dd >= ip.size() || dd >= pic.size()) {
         JOptionPane.showMessageDialog(this, "数据错误，请重新搜索!", "错误", 
                 JOptionPane.ERROR_MESSAGE);
         return;
@@ -273,7 +275,7 @@ void add_mousePressed(MouseEvent e) {
 
     // Get the friend's JICQ number and verify it's not ourselves
     Integer friendJicq = (Integer) jicq.get(dd);
-    if (friendJicq == myid) {
+    if (friendJicq.intValue() == myid) {
         JOptionPane.showMessageDialog(this, "不能添加自己为好友!", "提示",
                 JOptionPane.WARNING_MESSAGE);
         return;
@@ -290,15 +292,25 @@ void add_mousePressed(MouseEvent e) {
             JOptionPane.showMessageDialog(this, "好友已存在", "提示",
                     JOptionPane.INFORMATION_MESSAGE);
         } else if (response.equals("add")) {
-            // Add to temporary vectors
+            // Add to temporary vectors - FIX: Get current status from status vector
+            String currentStatus = (String) status.get(dd);
+            
             tmpjicq.add(friendJicq);
             tmpname.add(nickname.get(dd));
             tmpip.add(ip.get(dd));
-            tmppic.add(pic.get(dd));
             tmpemail.add(emails.get(dd));
             tmpinfo.add(infos.get(dd));
+            tmpstatus.add(currentStatus);
             
-            // Get friend's IP address - THIS IS THE KEY FIX
+            // Get picture info - FIX: Ensure we have picture info
+            if (dd < pic.size()) {
+                tmppic.add(pic.get(dd));
+            } else {
+                // Default to 0 if no picture info
+                tmppic.add(new Integer(0));
+            }
+            
+            // Get friend's IP address
             String friendIp = ip.get(dd).toString().trim();
             System.out.println("Adding friend with JICQ: " + friendJicq + ", IP: " + friendIp);
             
