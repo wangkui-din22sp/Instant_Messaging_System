@@ -104,28 +104,28 @@ public class FindFriend2 extends JFrame {//
 
     JMenuItem add = new JMenuItem();
 
-    public FindFriend2(int whoami, String host, int port) {//
-        enableEvents(AWTEvent.WINDOW_EVENT_MASK);
-        try {
-            serverhost = host;
-            servport = port;
-            myid = whoami;
-            jbInit();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }//
-        try {
-            socket = new Socket(InetAddress.getByName(serverhost), servport);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
-                    socket.getOutputStream())), true);
-            sendSocket = new DatagramSocket();
-        } catch (IOException e1) {
-            JOptionPane.showMessageDialog(this, "无法连接到服务器: " + e1.getMessage(), 
-                    "连接错误", JOptionPane.ERROR_MESSAGE);
-            e1.printStackTrace();
-}
+public FindFriend2(int whoami, String host, int port) {
+    enableEvents(AWTEvent.WINDOW_EVENT_MASK);
+    try {
+        serverhost = host;
+        servport = port;
+        myid = whoami;
+        jbInit();
+    } catch (Exception e) {
+        e.printStackTrace();
     }
+    try {
+        socket = new Socket(InetAddress.getByName(serverhost), servport);
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+                socket.getOutputStream())), true);
+        sendSocket = new DatagramSocket(); // Use ephemeral port for sending
+    } catch (IOException e1) {
+        JOptionPane.showMessageDialog(this, "无法连接到服务器: " + e1.getMessage(), 
+                "连接错误", JOptionPane.ERROR_MESSAGE);
+        e1.printStackTrace();
+    }
+}
 
     private void jbInit() throws Exception {//
         jLabel1.setText("List all registered users");
@@ -316,31 +316,33 @@ void add_mousePressed(MouseEvent e) {
             
             // Send notification to the friend (user1)
             if (friendIp == null || friendIp.isEmpty() || friendIp.equals("null") || friendIp.equals(" ")) {
-                System.out.println("无法发送通知: 好友IP地址为空");
-                JOptionPane.showMessageDialog(this, "好友添加成功，但好友当前不在线", "成功",
-                        JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                try {
-                    String notification = "oneaddyou" + myid;
-                    byte[] data = notification.getBytes();
-                    System.out.println("Sending notification to IP: " + friendIp + " on port: " + sendPort);
-                    
-                    sendPacket = new DatagramPacket(data, data.length, 
-                            InetAddress.getByName(friendIp), sendPort);
-                    sendSocket.send(sendPacket);
-                    
-                    JOptionPane.showMessageDialog(this, "好友添加成功! 已发送通知", "成功",
-                            JOptionPane.INFORMATION_MESSAGE);
-                } catch (UnknownHostException ex) {
-                    System.out.println("无效的IP地址: " + friendIp);
-                    JOptionPane.showMessageDialog(this, "好友添加成功，但无法发送通知", "成功",
-                            JOptionPane.INFORMATION_MESSAGE);
-                } catch (IOException ex) {
-                    System.out.println("发送通知失败: " + ex.getMessage());
-                    JOptionPane.showMessageDialog(this, "好友添加成功，但通知发送失败", "成功",
-                            JOptionPane.INFORMATION_MESSAGE);
-                }
-            }
+        System.out.println("无法发送通知: 好友IP地址为空");
+        JOptionPane.showMessageDialog(this, "好友添加成功，但好友当前不在线", "成功",
+                JOptionPane.INFORMATION_MESSAGE);
+    } else {
+        try {
+            String notification = "oneaddyou" + myid;
+            byte[] data = notification.getBytes();
+            System.out.println("Sending notification to IP: " + friendIp + " on port: " + 5001);
+            
+            // FIX: Use port 5001 to match MainWin's receive port
+            sendPacket = new DatagramPacket(data, data.length, 
+                    InetAddress.getByName(friendIp), 5001);
+            sendSocket.send(sendPacket);
+            
+            System.out.println("Notification sent successfully: " + notification);
+            JOptionPane.showMessageDialog(this, "好友添加成功! 已发送通知", "成功",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } catch (UnknownHostException ex) {
+            System.out.println("无效的IP地址: " + friendIp);
+            JOptionPane.showMessageDialog(this, "好友添加成功，但无法发送通知", "成功",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException ex) {
+            System.out.println("发送通知失败: " + ex.getMessage());
+            JOptionPane.showMessageDialog(this, "好友添加成功，但通知发送失败", "成功",
+                    JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
         }
     } catch (IOException e2) {
         JOptionPane.showMessageDialog(this, "添加好友失败: " + e2.getMessage(), 

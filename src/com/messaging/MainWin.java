@@ -43,6 +43,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
+import javax.swing.SwingUtilities;
 
 //Main window
 public class MainWin extends JFrame implements Runnable {
@@ -336,20 +337,27 @@ public class MainWin extends JFrame implements Runnable {
     //Temporary friend information during update
 
     public void run() {
+        
 
         while (true) {
+             System.out.println("UDP listener started on port " + udpPORT);
             try {
+                
                 for (int x = 0; x < 512; x++)
                     array[x] = ' ';
-                //Receive data packet
-                receivePacket = new DatagramPacket(array, array.length);
-                receiveSocket.receive(receivePacket);
-                byte[] data = receivePacket.getData();
-                String infofromip = receivePacket.getAddress().getHostAddress()
-                        .toString().trim();
-                index3 = 0;
-                received = new String(data, 0, data.length);
-                received.trim();
+                // Receive data packet
+            receivePacket = new DatagramPacket(array, array.length);
+            receiveSocket.receive(receivePacket);
+            byte[] data = receivePacket.getData();
+            String infofromip = receivePacket.getAddress().getHostAddress()
+                    .toString().trim();
+            int receivedLength = receivePacket.getLength();
+            index3 = 0;
+            received = new String(data, 0, receivedLength);
+            received.trim();
+            
+            System.out.println("Received " + receivedLength + " bytes from " + 
+                               infofromip + ": " + received);
 
                 String tempstr;
                 int tx;
@@ -401,17 +409,24 @@ public class MainWin extends JFrame implements Runnable {
                 }//end friend offline
                 //someone add me as friend
                 else if (received.substring(0, 9).equals("oneaddyou")) {
-                    //Someone added me as a friend
-                    tempstr = received.substring(9).trim();
-                    System.out.println("str" + tempstr);
-                    tempgetjicq = Integer.parseInt(tempstr);
-                    System.out.println("id" + tempgetjicq);
-                    //JOptionPane.showMessageDialog(this,"锟秸碉拷"+tempgetjicq+"addyou","ok",JOptionPane.INFORMATION_MESSAGE);
-                    oneaddme.setText(tempgetjicq + " added you as a friend!");
-                    OneAddyou.setBounds(400, 300, 250, 200);
-                    OneAddyou.show();
-
-                } //endsomeone add me as friend
+    // Someone added me as a friend
+    tempstr = received.substring(9).trim();
+    System.out.println("Received add notification: " + tempstr);
+    
+    // FIX: Store the jicq in a final variable to avoid overwriting
+    final int addingUserJicq = Integer.parseInt(tempstr);
+    System.out.println("User " + addingUserJicq + " added you as a friend!");
+    
+    // Show notification in UI thread
+    SwingUtilities.invokeLater(new Runnable() {
+        public void run() {
+            oneaddme.setText("用户 " + addingUserJicq + " 添加您为好友!");
+            OneAddyou.setBounds(400, 300, 250, 200);
+            OneAddyou.show();
+        }
+    });
+    
+} // end someone add me as friend
                 else if (received.substring(0, 9).equals("readysend")) {
                     // else if (received.equals("readysend")) {
                     System.out.println(file);
@@ -514,6 +529,37 @@ public class MainWin extends JFrame implements Runnable {
 
     /** Component initialization */
     private void jbInit() throws Exception {//Component initialization
+// In jbInit() method of MainWin.java, add:
+OneAddyou.getContentPane().setLayout(null);
+OneAddyou.getContentPane().setBackground(new Color(88, 172, 165));
+OneAddyou.setSize(250, 200);
+OneAddyou.setResizable(false);
+
+jLabel10.setText("好友请求");
+jLabel10.setBounds(new Rectangle(7, 13, 143, 18));
+oneaddme.setBounds(new Rectangle(7, 57, 247, 18));
+addit.setText("接受");
+addit.setBounds(new Rectangle(19, 124, 93, 29));
+addit.addMouseListener(new java.awt.event.MouseAdapter() {
+    public void mouseClicked(MouseEvent e) {
+        addit_mouseClicked(e);
+    }
+});
+iknow.setText("知道了");
+iknow.setBounds(new Rectangle(164, 124, 79, 29));
+iknow.addMouseListener(new java.awt.event.MouseAdapter() {
+    public void mouseClicked(MouseEvent e) {
+        iknow_mouseClicked(e);
+    }
+});
+
+// Add components to dialog
+OneAddyou.getContentPane().add(jLabel10, null);
+OneAddyou.getContentPane().add(oneaddme, null);
+OneAddyou.getContentPane().add(addit, null);
+OneAddyou.getContentPane().add(iknow, null);
+
+
         contentPane = (JPanel) this.getContentPane();
         contentPane.setLayout(flowLayout1);
 
