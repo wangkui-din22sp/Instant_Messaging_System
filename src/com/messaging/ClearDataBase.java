@@ -18,9 +18,9 @@ public class ClearDataBase {
             
             // Connect to postgres database (default database)
             conn = DriverManager.getConnection(
-                "jdbc:postgresql://82.128.132.118:5432/postgres",
+                "jdbc:postgresql://localhost:5432/postgres",
                 "postgres", 
-                "1234"
+                "admin"
             );
             stmt = conn.createStatement();
             
@@ -65,9 +65,9 @@ public class ClearDataBase {
         try {
             Class.forName("org.postgresql.Driver");
             conn = DriverManager.getConnection(
-                "jdbc:postgresql://82.128.132.118:5432/javaicq",
+                "jdbc:postgresql://localhost:5432/javaicq",
                 "postgres", 
-                "1234"
+                "admin"
             );
             stmt = conn.createStatement();
             
@@ -117,9 +117,9 @@ public class ClearDataBase {
             
             // First connect to postgres database
             conn = DriverManager.getConnection(
-                "jdbc:postgresql://82.128.132.118:5432/postgres",
+                "jdbc:postgresql://localhost:5432/postgres",
                 "postgres",
-                "1234"
+                "admin"
             );
             
             // Check if database exists
@@ -140,9 +140,9 @@ public class ClearDataBase {
             
             // Now connect to the javaicq database
             conn = DriverManager.getConnection(
-                "jdbc:postgresql://82.128.132.118:5432/javaicq",
+                "jdbc:postgresql://localhost:5432/javaicq",
                 "postgres",
-                "1234"
+                "admin"
             );
             
             stmt = conn.createStatement();

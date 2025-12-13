@@ -120,6 +120,10 @@ public FindFriend2(int whoami, String host, int port) {
         out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
                 socket.getOutputStream())), true);
         sendSocket = new DatagramSocket(); // Use ephemeral port for sending
+        
+        // Optional: Check for pending friend requests when window opens
+        // Uncomment if you want this feature
+        // checkPendingRequests();
     } catch (IOException e1) {
         JOptionPane.showMessageDialog(this, "无法连接到服务器: " + e1.getMessage(), 
                 "连接错误", JOptionPane.ERROR_MESSAGE);
@@ -131,6 +135,7 @@ public FindFriend2(int whoami, String host, int port) {
         jLabel1.setText("List all registered users");
         jLabel1.setBounds(new Rectangle(11, 11, 211, 18));
         this.getContentPane().setLayout(new FlowLayout());
+        this.setTitle("Find Friends");
         find2.setText("List all users");
         find2.setBounds(new Rectangle(8, 289, 79, 29));
         find2.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -163,6 +168,7 @@ public FindFriend2(int whoami, String host, int port) {
             }
         });
         look.setText("check friend info");
+        add.setText("Send Friend Request"); // Updated text
         look.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(MouseEvent e) {
                 look_mousePressed(e);
@@ -256,106 +262,153 @@ public FindFriend2(int whoami, String host, int port) {
 
     //add frined
     // 添加好友
+// 添加好友 - Send friend request
 void add_mousePressed(MouseEvent e) {
     int dd = list2.getSelectedIndex();
     
     // Check if a friend is selected
     if (dd == -1) {
-        JOptionPane.showMessageDialog(this, "请先选择一个好友!", "提示", 
+        JOptionPane.showMessageDialog(this, "Please select a friend first!", "提示", 
                 JOptionPane.WARNING_MESSAGE);
         return;
     }
     
     // Check if vectors have data at the selected index
     if (dd >= jicq.size() || dd >= nickname.size() || dd >= ip.size() || dd >= pic.size()) {
-        JOptionPane.showMessageDialog(this, "数据错误，请重新搜索!", "错误", 
+        JOptionPane.showMessageDialog(this, "Data error, please search again!", "错误", 
                 JOptionPane.ERROR_MESSAGE);
         return;
     }
 
-    // Get the friend's JICQ number and verify it's not ourselves
+    // Get the friend's JICQ number
     Integer friendJicq = (Integer) jicq.get(dd);
-    if (friendJicq.intValue() == myid) {
-        JOptionPane.showMessageDialog(this, "不能添加自己为好友!", "提示",
-                JOptionPane.WARNING_MESSAGE);
-        return;
-    }
-
-    // 添加好友到数据库
+    
+    // Send friend request to server (not adding directly anymore)
     out.println("addfriend");
     out.println(friendJicq);  // Friend's JICQ number
     out.println(myid);        // Our JICQ number
     
     try {
         String response = in.readLine();
-        if (response.equals("same")) {
-            JOptionPane.showMessageDialog(this, "好友已存在", "提示",
-                    JOptionPane.INFORMATION_MESSAGE);
-        } else if (response.equals("add")) {
-            // Add to temporary vectors - FIX: Get current status from status vector
-            String currentStatus = (String) status.get(dd);
-            
-            tmpjicq.add(friendJicq);
-            tmpname.add(nickname.get(dd));
-            tmpip.add(ip.get(dd));
-            tmpemail.add(emails.get(dd));
-            tmpinfo.add(infos.get(dd));
-            tmpstatus.add(currentStatus);
-            
-            // Get picture info - FIX: Ensure we have picture info
-            if (dd < pic.size()) {
-                tmppic.add(pic.get(dd));
-            } else {
-                // Default to 0 if no picture info
-                tmppic.add(new Integer(0));
-            }
-            
-            // Get friend's IP address
-            String friendIp = ip.get(dd).toString().trim();
-            System.out.println("Adding friend with JICQ: " + friendJicq + ", IP: " + friendIp);
-            
-            // Send notification to the friend (user1)
-            if (friendIp == null || friendIp.isEmpty() || friendIp.equals("null") || friendIp.equals(" ")) {
-        System.out.println("无法发送通知: 好友IP地址为空");
-        JOptionPane.showMessageDialog(this, "好友添加成功，但好友当前不在线", "成功",
-                JOptionPane.INFORMATION_MESSAGE);
-    } else {
-        try {
-            String notification = "oneaddyou" + myid;
-            byte[] data = notification.getBytes();
-            System.out.println("Sending notification to IP: " + friendIp + " on port: " + 5001);
-            
-            // FIX: Use port 5001 to match MainWin's receive port
-            sendPacket = new DatagramPacket(data, data.length, 
-                    InetAddress.getByName(friendIp), 5001);
-            sendSocket.send(sendPacket);
-            
-            System.out.println("Notification sent successfully: " + notification);
-            JOptionPane.showMessageDialog(this, "好友添加成功! 已发送通知", "成功",
-                    JOptionPane.INFORMATION_MESSAGE);
-        } catch (UnknownHostException ex) {
-            System.out.println("无效的IP地址: " + friendIp);
-            JOptionPane.showMessageDialog(this, "好友添加成功，但无法发送通知", "成功",
-                    JOptionPane.INFORMATION_MESSAGE);
-        } catch (IOException ex) {
-            System.out.println("发送通知失败: " + ex.getMessage());
-            JOptionPane.showMessageDialog(this, "好友添加成功，但通知发送失败", "成功",
+        System.out.println("Server response: " + response);
+        
+        // Handle different server responses
+        if (response.equals("user_not_found")) {
+            JOptionPane.showMessageDialog(this, "User not found!", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        } 
+        else if (response.equals("cannot_add_self")) {
+            JOptionPane.showMessageDialog(this, "You cannot add yourself as a friend!", "Error",
+                    JOptionPane.WARNING_MESSAGE);
+        }
+        else if (response.equals("already_friends")) {
+            JOptionPane.showMessageDialog(this, "You are already friends with this user!", "Info",
                     JOptionPane.INFORMATION_MESSAGE);
         }
-    }
+        else if (response.equals("request_exists")) {
+            JOptionPane.showMessageDialog(this, "Friend request already sent! Waiting for response.", "Info",
+                    JOptionPane.INFORMATION_MESSAGE);
+        }
+        else if (response.equals("reverse_request_exists")) {
+            JOptionPane.showMessageDialog(this, 
+                "This user has already sent you a friend request!\n" +
+                "Please check your pending requests.", 
+                "Info", JOptionPane.INFORMATION_MESSAGE);
+        }
+        else if (response.equals("request_sent")) {
+            // Friend request was successfully created
+            JOptionPane.showMessageDialog(this, 
+                "Friend request sent successfully!\n" +
+                "The user will be notified and must accept your request.", 
+                "Success", JOptionPane.INFORMATION_MESSAGE);
+            
+            // Optional: Remove from search results to avoid duplicate requests
+            // This is optional - you can keep the user in the list
+            DefaultListModel mm = (DefaultListModel) list2.getModel();
+            if (dd < mm.getSize()) {
+                // You could remove the item or just leave it
+                // mm.remove(dd);
+            }
+        }
+        else if (response.equals("request_failed")) {
+            JOptionPane.showMessageDialog(this, "Failed to send friend request. Please try again.", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+        else if (response.equals("error")) {
+            JOptionPane.showMessageDialog(this, "An error occurred. Please try again.", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+        else {
+            // Handle old response format (for backward compatibility)
+            if (response.equals("same")) {
+                JOptionPane.showMessageDialog(this, "Friend already exists", "Error",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else if (response.equals("add")) {
+                // OLD BEHAVIOR - This shouldn't happen with the new server
+                JOptionPane.showMessageDialog(this, 
+                    "Added friend directly (old server behavior).\n" +
+                    "Please update your server to the new version.", 
+                    "Warning", JOptionPane.WARNING_MESSAGE);
+                
+                // Old behavior - add to temporary vectors
+                String currentStatus = (String) status.get(dd);
+                
+                tmpjicq.add(friendJicq);
+                tmpname.add(nickname.get(dd));
+                tmpip.add(ip.get(dd));
+                tmpemail.add(emails.get(dd));
+                tmpinfo.add(infos.get(dd));
+                tmpstatus.add(currentStatus);
+                
+                if (dd < pic.size()) {
+                    tmppic.add(pic.get(dd));
+                } else {
+                    tmppic.add(new Integer(0));
+                }
+                
+                JOptionPane.showMessageDialog(this, "Friend added successfully (old method)", "Successful",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Unknown response: " + response, "Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
         }
     } catch (IOException e2) {
-        JOptionPane.showMessageDialog(this, "添加好友失败: " + e2.getMessage(), 
-                "错误", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(this, "Failed to send friend request: " + e2.getMessage(), 
+                "Error", JOptionPane.ERROR_MESSAGE);
         e2.printStackTrace();
     }
 }
+// 查看好友详细信息
+// Check for pending friend requests
+public void checkPendingRequests() {
+    try {
+        out.println("checkpending");
+        out.println(myid);
+        
+        String countStr = in.readLine();
+        int pendingCount = Integer.parseInt(countStr);
+        
+        if (pendingCount > 0) {
+            JOptionPane.showMessageDialog(this, 
+                "You have " + pendingCount + " pending friend request(s).\n" +
+                "Please check the main window for notifications.", 
+                "Pending Requests", JOptionPane.INFORMATION_MESSAGE);
+        }
+    } catch (IOException ex) {
+        // Silent fail - not critical
+        System.out.println("Could not check pending requests: " + ex.getMessage());
+    } catch (NumberFormatException ex) {
+        System.out.println("Invalid response for pending requests");
+    }
+}
+
 void look_mousePressed(MouseEvent e) {
     int selectedIndex = list2.getSelectedIndex();
     
     // Check if a friend is actually selected
     if (selectedIndex == -1) {
-        JOptionPane.showMessageDialog(this, "请先选择一个好友!", "提示", 
+        JOptionPane.showMessageDialog(this, "Please select a user first!", "提示", 
                 JOptionPane.WARNING_MESSAGE);
         return;
     }
@@ -364,34 +417,34 @@ void look_mousePressed(MouseEvent e) {
     if (selectedIndex >= nickname.size() || selectedIndex >= sex.size() || 
         selectedIndex >= place.size() || selectedIndex >= emails.size() || 
         selectedIndex >= infos.size()) {
-        JOptionPane.showMessageDialog(this, "数据错误，无法显示好友信息!", "错误", 
+        JOptionPane.showMessageDialog(this, "Data error, cannot display user information!", "错误", 
                 JOptionPane.ERROR_MESSAGE);
         return;
     }
     
-    // Get all the friend information
-    String friendName = (String) nickname.get(selectedIndex);
-    String friendSex = (String) sex.get(selectedIndex);
-    String friendPlace = (String) place.get(selectedIndex);
-    String friendEmail = (String) emails.get(selectedIndex);
-    String friendInfo = (String) infos.get(selectedIndex);
-    String friendStatus = (String) status.get(selectedIndex);
-    Integer friendJicq = (Integer) jicq.get(selectedIndex);
+    // Get all the user information
+    String userName = (String) nickname.get(selectedIndex);
+    String userSex = (String) sex.get(selectedIndex);
+    String userPlace = (String) place.get(selectedIndex);
+    String userEmail = (String) emails.get(selectedIndex);
+    String userInfo = (String) infos.get(selectedIndex);
+    String userStatus = (String) status.get(selectedIndex);
+    Integer userJicq = (Integer) jicq.get(selectedIndex);
     
     // Create a detailed information message
     String infoMessage = 
-        "好友详细信息:\n\n" +
-        "昵称: " + friendName + "\n" +
-        "JICQ号码: " + friendJicq + "\n" +
-        "性别: " + friendSex + "\n" +
-        "地区: " + friendPlace + "\n" +
-        "邮箱: " + friendEmail + "\n" +
-        "状态: " + (friendStatus.equals("1") ? "在线" : "离线") + "\n" +
-        "个人简介: " + friendInfo;
+        "User Information:\n\n" +
+        "Name: " + userName + "\n" +
+        "JICQ#: " + userJicq + "\n" +
+        "Gender: " + userSex + "\n" +
+        "Location: " + userPlace + "\n" +
+        "Email: " + userEmail + "\n" +
+        "Status: " + (userStatus.equals("1") ? "Online" : "Offline") + "\n" +
+        "About: " + userInfo + "\n\n" +
+        "Note: You need to send a friend request and wait for acceptance.";
     
     // Display the information in a dialog
-    JOptionPane.showMessageDialog(this, infoMessage, "好友信息 - " + friendName, 
+    JOptionPane.showMessageDialog(this, infoMessage, "User Info - " + userName, 
             JOptionPane.INFORMATION_MESSAGE);
 }
-    //add friend end
 }

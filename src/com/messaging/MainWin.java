@@ -199,7 +199,7 @@ public class MainWin extends JFrame implements Runnable {
 
     int udpPORT = 5001;
 
-    int sendPort = 5000;
+    int sendPort = 5001;
 
     String server;
 
@@ -279,73 +279,77 @@ public class MainWin extends JFrame implements Runnable {
     
 
     /* Connect to server */
-    public void ConnectServer(int myid) {
-        try {
-            socket = new Socket(InetAddress.getByName(server), serverport);
+/* Connect to server */
+public void ConnectServer(int myid) {
+    try {
+        socket = new Socket(InetAddress.getByName(server), serverport);
 
-            in = new BufferedReader(new InputStreamReader(socket
-                    .getInputStream()));
-            out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
-                    socket.getOutputStream())), true);
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+                socket.getOutputStream())), true);
 
-            
-            //Retrieve friend information
-            out.println("friend");
-            out.println(myid);
-            friendnum = Integer.parseInt(in.readLine());
-            String friendname = " ";
+        // Retrieve friend information
+        out.println("friend");
+        out.println(myid);
+        friendnum = Integer.parseInt(in.readLine());
+        String friendname = " ";
 
-            String friendjicqno, friendip, friendstatus, picinfo, email, sex, infos;
-            do {
-                friendname = in.readLine();
-                if (friendname.equals("over"))
-                    break;
-                friendnames.add(friendname);
-                friendjicqno = in.readLine();
-                friendjicq.add(new Integer(friendjicqno));
-                friendip = in.readLine();
-                friendips.add(friendip);
-                friendstatus = in.readLine();
-                status.add(friendstatus);
-                picinfo = in.readLine();
-                picno.add(new Integer(picinfo));
-                email = in.readLine();
-                friendemail.add(email);
-                sex = in.readLine();
-                friendsex.add(sex);
-                infos = in.readLine();
-                friendinfo.add(infos);
-            } while (!friendname.equals("over"));
-        } catch (IOException e1) {
-            System.out.println("false");
+        String friendjicqno, friendip, friendstatus, picinfo, email, sex, infos;
+        do {
+            friendname = in.readLine();
+            if (friendname.equals("over"))
+                break;
+            friendnames.add(friendname);
+            friendjicqno = in.readLine();
+            friendjicq.add(new Integer(friendjicqno));
+            friendip = in.readLine();
+            friendips.add(friendip);
+            friendstatus = in.readLine();
+            status.add(friendstatus);
+            picinfo = in.readLine();
+            picno.add(new Integer(picinfo));
+            email = in.readLine();
+            friendemail.add(email);
+            sex = in.readLine();
+            friendsex.add(sex);
+            infos = in.readLine();
+            friendinfo.add(infos);
+        } while (!friendname.equals("over"));
+        out.println(udpPORT);
+    } catch (IOException e1) {
+        System.out.println("false");
+        return; // Return early on error
+    }
+    
+    // Update UI on EDT
+    SwingUtilities.invokeLater(new Runnable() {
+        public void run() {
+            // Display friend information
+            DefaultListModel mm = (DefaultListModel) list.getModel();
+            int picid;
+            for (int p = 0; p < friendnames.size(); p++) {
+                picid = Integer.parseInt(picno.get(p).toString());
+                if (status.get(p).equals("1")) {
+                    mm.addElement(new Object[] { friendnames.get(p),
+                            new ImageIcon(picsonline[picid]) });
+                } else {
+                    mm.addElement(new Object[] { friendnames.get(p),
+                            new ImageIcon(picsoffline[picid]) });
+                }
+            }//for
         }
-        //Display friend information
-        DefaultListModel mm = (DefaultListModel) list.getModel();
-        int picid;
-        for (int p = 0; p < friendnames.size(); p++) {
-            picid = Integer.parseInt(picno.get(p).toString());
-            if (status.get(p).equals("1")) {
-                mm.addElement(new Object[] { friendnames.get(p),
-                        new ImageIcon(picsonline[picid]) });
-            } else {
-                mm.addElement(new Object[] { friendnames.get(p),
-                        new ImageIcon(picsoffline[picid]) });
-            }
-        }//for
-    }//connectto server
+    });
+}//connect to server end
     
     //Temporary friend information during update
 
     public void run() {
-        
-
-        while (true) {
-             System.out.println("UDP listener started on port " + udpPORT);
-            try {
-                
-                for (int x = 0; x < 512; x++)
-                    array[x] = ' ';
-                // Receive data packet
+    while (true) {
+        System.out.println("UDP listener started on port " + udpPORT);
+        try {
+            for (int x = 0; x < 512; x++)
+                array[x] = ' ';
+            // Receive data packet
             receivePacket = new DatagramPacket(array, array.length);
             receiveSocket.receive(receivePacket);
             byte[] data = receivePacket.getData();
@@ -358,195 +362,314 @@ public class MainWin extends JFrame implements Runnable {
             
             System.out.println("Received " + receivedLength + " bytes from " + 
                                infofromip + ": " + received);
-
-                String tempstr;
-                int tx;
-                //friend online
-                if (received.substring(0, 6).equals("online")) {//Friend online notification
-                    tempstr = received.substring(6).trim();
-                    System.out.println("通知:" + tempstr + "上线了!");
-                    tempgetjicq = Integer.parseInt(tempstr);
-                    System.out.println("id jicq2" + tempgetjicq);
-                    do {
-                        tx = Integer
-                                .parseInt(friendjicq.get(index3).toString());
-                        System.out.println("通知好友" + tx + "上线了!");
-                        if (tempgetjicq == tx)
-                            break;
-                        index3++;
-                    } while (index3 < friendjicq.size());
+            
+            // First, check if it's the test packet
+            if (received.equals("test from " + myjicq)) {
+                System.out.println("Ignoring test packet from self");
+                continue; // Skip processing this packet
+            }
+            
+            String tempstr;
+            int tx;
+            
+            // Check string length before substring operations
+            if (received.length() >= 6 && received.startsWith("online")) {
+                tempstr = received.substring(6).trim();
+                System.out.println("notification:" + tempstr + " online now!");
+                tempgetjicq = Integer.parseInt(tempstr);
+                System.out.println("id jicq2" + tempgetjicq);
+                
+                // Find friend in list
+                boolean found = false;
+                for (int i = 0; i < friendjicq.size(); i++) {
+                    tx = Integer.parseInt(friendjicq.get(i).toString());
+                    System.out.println("notification:" + tx + " online now!");
+                    if (tempgetjicq == tx) {
+                        index3 = i;
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (found) {
                     friendips.setElementAt(infofromip, index3);
-                    
                     DefaultListModel mm3 = (DefaultListModel) list.getModel();
                     int picid = Integer.parseInt(picno.get(index3).toString());
                     mm3.setElementAt(new Object[] { friendnames.get(index3),
                             new ImageIcon(picsonline[picid]) }, index3);
-                }//end online
+                }
+            }
+            else if (received.length() >= 7 && received.startsWith("offline")) {
+                tempstr = received.substring(7).trim();
+                System.out.println("str" + tempstr);
+                tempgetjicq = Integer.parseInt(tempstr);
+                System.out.println("id" + tempgetjicq);
                 
-                //friend offline
-                else if (received.substring(0, 7).equals("offline")) {//Friend offline notification
-                    tempstr = received.substring(7).trim();
-                    System.out.println("str" + tempstr);
-                    tempgetjicq = Integer.parseInt(tempstr);
-                    System.out.println("id" + tempgetjicq);
-                    do {
-                        tx = Integer
-                                .parseInt(friendjicq.get(index3).toString());
-                        System.out.println("tx" + tx);
-                        if (tempgetjicq == tx)
-                            break;
-                        index3++;
-                    } while (index3 < friendjicq.size());
-                    infofromip = "null";
-                    friendips.setElementAt(infofromip, index3);
+                // Find friend in list
+                boolean found = false;
+                for (int i = 0; i < friendjicq.size(); i++) {
+                    tx = Integer.parseInt(friendjicq.get(i).toString());
+                    System.out.println("tx" + tx);
+                    if (tempgetjicq == tx) {
+                        index3 = i;
+                        found = true;
+                        break;
+                    }
+                }
                 
-                    System.out.println(index3);
+                if (found) {
+                    friendips.setElementAt("null", index3);
                     DefaultListModel mm3 = (DefaultListModel) list.getModel();
                     int picid = Integer.parseInt(picno.get(index3).toString());
                     mm3.setElementAt(new Object[] { friendnames.get(index3),
                             new ImageIcon(picsoffline[picid]) }, index3);
-
-                }//end friend offline
-                //someone add me as friend
-                else if (received.substring(0, 9).equals("oneaddyou")) {
-    // Someone added me as a friend
-    tempstr = received.substring(9).trim();
-    System.out.println("Received add notification: " + tempstr);
-    
-    // FIX: Store the jicq in a final variable to avoid overwriting
-    final int addingUserJicq = Integer.parseInt(tempstr);
-    System.out.println("User " + addingUserJicq + " added you as a friend!");
-    
-    // Show notification in UI thread
-    SwingUtilities.invokeLater(new Runnable() {
-        public void run() {
-            oneaddme.setText("用户 " + addingUserJicq + " 添加您为好友!");
-            OneAddyou.setBounds(400, 300, 250, 200);
-            OneAddyou.show();
-        }
-    });
-    
-} // end someone add me as friend
-                else if (received.substring(0, 9).equals("readysend")) {
-                    // else if (received.equals("readysend")) {
-                    System.out.println(file);
-                    SendFile sf = new SendFile(theip, file);
-                    sf.fileClient();
-                    System.out.println("Sending file to " + theip);
-                
-                } else if (received.substring(0, 12).equals("readyreceive")) {
-                    FileDialog fdsave = new FileDialog(this, "Save File", 1);
-                    fdsave.setVisible(true);
-                    String dir = fdsave.getDirectory();
-                    String name = received.substring(12);
-                    fdsave.setFile(name);
-                    String s = "readysend";
-                    byte[] data2 = s.getBytes();
-                    try {
-                        sendPacket = new DatagramPacket(data2, s.length(),
-                                InetAddress.getByName(infofromip), sendPort);
-                        sendSocket.send(sendPacket);
-                        System.out.println("Ready to send " + received);
-                    } catch (Exception e2) {
-                        System.out.println(e2.toString());
-                    }
-
-                    GetFile gf = new GetFile(dir, "receive");
-                    gf.fileServer();
-                } else {//Unknown sender
-                    index4 = 0;
-                    
-                    do {
-                        String friendip = friendips.get(index4).toString()
-                                .trim();
-                        if (infofromip.equals(friendip)) {
-                            String nameinfo = friendnames.get(index4)
-                                    .toString().trim();
-                            JOptionPane.showMessageDialog(this, "来自" + nameinfo
-                                    + "的消息", "ok",
-                                    JOptionPane.INFORMATION_MESSAGE);
-                            fromunknow = false;
-                            break;
-                        }//if
-                        index4++;
-                        if (index4 >= friendnames.size()) {
-                            fromunknow = true;//Unknown sender
-                            JOptionPane.showMessageDialog(this, "Unknown sender "
-                                    + infofromip + " message", "ok",
-                                    JOptionPane.INFORMATION_MESSAGE);
-                        }
-                    } while (index4 < friendnames.size());//while
-                    System.out.println(index4);
-
                 }
-                ;
-
-            } catch (IOException ex) {
-                ex.printStackTrace();
             }
+            else if (received.length() >= 9 && received.startsWith("oneaddyou")) {
+                tempstr = received.substring(9).trim();
+                System.out.println("Received add notification: " + tempstr);
+                
+                final int addingUserJicq = Integer.parseInt(tempstr);
+                System.out.println("User " + addingUserJicq + " added you as a friend!");
+                
+                // Store for later use
+                tempgetjicq = addingUserJicq;
+                
+                // Show notification in UI thread
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        oneaddme.setText("user " + addingUserJicq + " added you as a friend!");
+                        OneAddyou.setBounds(400, 300, 250, 200);
+                        OneAddyou.setLocationRelativeTo(MainWin.this);
+                        OneAddyou.setVisible(true);
+                    }
+                });
+            }
+            else if (received.length() >= 9 && received.startsWith("readysend")) {
+                System.out.println(file);
+                SendFile sf = new SendFile(theip, file);
+                sf.fileClient();
+                System.out.println("Sending file to " + theip);
+            }
+            else if (received.length() >= 12 && received.startsWith("readyreceive")) {
+                FileDialog fdsave = new FileDialog(this, "Save File", 1);
+                fdsave.setVisible(true);
+                String dir = fdsave.getDirectory();
+                String name = received.substring(12);
+                fdsave.setFile(name);
+                String s = "readysend";
+                byte[] data2 = s.getBytes();
+                try {
+                    sendPacket = new DatagramPacket(data2, s.length(),
+                            InetAddress.getByName(infofromip), sendPort);
+                    sendSocket.send(sendPacket);
+                    System.out.println("Ready to send " + received);
+                } catch (Exception e2) {
+                    System.out.println(e2.toString());
+                }
+                GetFile gf = new GetFile(dir, "receive");
+                gf.fileServer();
+            }
+            else if (received.length() > 0) {
+    // Regular message
+    System.out.println("Received message: " + received);
+    
+    // Check if from known friend
+    boolean fromFriend = false;
+    String tempFriendName = " ";
+    int tempIndex = -1;
+    
+    for (int i = 0; i < friendips.size(); i++) {
+        String friendip = friendips.get(i).toString().trim();
+        if (infofromip.equals(friendip)) {
+            fromFriend = true;
+            tempFriendName = friendnames.get(i).toString().trim();
+            tempIndex = i;
+            break;
         }
-
-    }//run end
+    }
+    
+    if (fromFriend) {
+        final String friendName = tempFriendName;  // Make final copy
+        final int foundIndex = tempIndex;          // Make final copy
+        final String message = received;           // Make final copy
+        
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                JOptionPane.showMessageDialog(MainWin.this, 
+                    "来自" + friendName + "的消息: " + message, 
+                    "新消息", JOptionPane.INFORMATION_MESSAGE);
+                index4 = foundIndex;  // Update class variable
+            }
+        });
+    } else {
+        // Unknown sender
+        final String message = received;  // Make final copy
+        final String senderIp = infofromip;  // Make final copy
+        
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                JOptionPane.showMessageDialog(MainWin.this, 
+                    "Unknown sender " + senderIp + " message: " + message, 
+                    "未知消息", JOptionPane.INFORMATION_MESSAGE);
+                fromunknow = true;
+            }
+        });
+    }
+}
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+}
     
     //Create UDP socket
 
-    public void CreatUDP() {
-        try {
+public void CreatUDP() {
+    try {
+        sendSocket = new DatagramSocket();
+        System.out.println("DEBUG: Send socket created on port: " + sendSocket.getLocalPort());
+        receiveSocket = new DatagramSocket(udpPORT);
+        System.out.println("DEBUG: Receive socket created on port: " + receiveSocket.getLocalPort());
+        
+        // Test if we can send to ourselves
+        // String testMsg = "test";
+        // byte[] testData = testMsg.getBytes();
+        // DatagramPacket testPacket = new DatagramPacket(testData, testData.length, 
+        //         InetAddress.getByName("127.0.0.1"), udpPORT);
+        // sendSocket.send(testPacket);
+        // System.out.println("DEBUG: Sent test packet to localhost:" + udpPORT);
+        
+    } catch (SocketException se) {
+        se.printStackTrace();
+        System.out.println("Socket creation error");
+        JOptionPane.showMessageDialog(this, 
+            "Port 5001 is already in use. Another instance may be running.",
+            "Port Error", JOptionPane.ERROR_MESSAGE);
+    } catch (IOException ie) {
+        System.out.println("Test send failed: " + ie.getMessage());
+    }
+}
 
-            /** ************************************* */
-            sendSocket = new DatagramSocket();
-            System.out.println("Send socket created: " + sendSocket);
-            receiveSocket = new DatagramSocket(udpPORT);
-            System.out.println("Receive socket created: " + receiveSocket);
-            /** ************************************* */
+public MainWin(int s, String sername, int serport) {
+    udpPORT = 5001 + (s % 100);  // Different port for each user
+    sendPort = 5000 + (s % 100); // Different port for sending
+    enableEvents(AWTEvent.WINDOW_EVENT_MASK);
+    try {
+        myjicq = s;
+        server = sername;
+        serverport = serport;
+        
+        // FIRST: Initialize UI components
+        jbInit();
+        
+        // Create FindFriend2 window immediately (but don't connect to server yet)
+        findf = new FindFriend2(myjicq, server, serverport);
+        findf.setBounds(200, 150, 300, 300);
+        
+        // Make window visible immediately
+        this.setVisible(true);
+        this.setLocationRelativeTo(null);
+        
+        // Start network operations in a background thread
+        Thread networkThread = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    ConnectServer(myjicq);
+                    CreatUDP();
+                    try {
+    out.println("online");
+    out.println(myjicq);
+    System.out.println("Notified server of online status for user: " + myjicq);
+} catch (Exception ex) {
+    System.out.println("Failed to notify server: " + ex.getMessage());
+}
+                    
+                    // Start UDP listener thread
+                    thread = new Thread(MainWin.this);
+                    thread.start();
+                    
+                     checkPendingFriendRequestsImmediate();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    // Show error to user
+                    SwingUtilities.invokeLater(new Runnable() {
+                        public void run() {
+                            JOptionPane.showMessageDialog(MainWin.this,
+                                "Error connecting to server: " + e.getMessage(),
+                                "Connection Error",
+                                JOptionPane.ERROR_MESSAGE);
+                        }
+                    });
+                }
+            }
+        });
+        networkThread.start();
+        
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(null,
+            "Error initializing application: " + e.getMessage(),
+            "Initialization Error",
+            JOptionPane.ERROR_MESSAGE);
+    }
+    System.out.println("DEBUG: MainWin constructor completed, window should be visible");
+}//end main*****
 
-        } catch (SocketException se) {
-            se.printStackTrace();
-            System.out.println("Socket creation error");
+private void checkPendingFriendRequestsImmediate() {
+    try {
+        out.println("getpendingrequests");
+        out.println(myjicq);
+        
+        String pendingCount = in.readLine();
+        int count = Integer.parseInt(pendingCount);
+        System.out.println("Immediate check: Found " + count + " pending requests");
+        
+        if (count > 0) {
+            SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    JOptionPane.showMessageDialog(MainWin.this, 
+                        "您有 " + count + " 个待处理的好友请求。\n请点击'在线通知'查看详细信息。",
+                        "待处理的好友请求", JOptionPane.INFORMATION_MESSAGE);
+                }
+            });
         }
-    }// creat udp end
-    //main ****************
-
-    public MainWin(int s, String sername, int serport) {//Constructor
-        enableEvents(AWTEvent.WINDOW_EVENT_MASK);
-        try {
-            myjicq = s;
-            server = sername;
-            serverport = serport;
-            jbInit();
-            ConnectServer(myjicq);
-            CreatUDP();
-            findf = new FindFriend2(myjicq, server, serverport);
-            findf.setBounds(200, 150, 300, 300);
-            thread = new Thread(this);
-            thread.start();
-        }
-
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-    }//end main*****
+    } catch (IOException ex) {
+        System.out.println("No pending requests or error: " + ex.getMessage());
+    }
+}
 
     /** Component initialization */
     private void jbInit() throws Exception {//Component initialization
-// In jbInit() method of MainWin.java, add:
+// Setup OneAddyou dialog for friend request notifications
+System.out.println("DEBUG: jbInit() called");
+OneAddyou.setTitle("Friend Request");
 OneAddyou.getContentPane().setLayout(null);
 OneAddyou.getContentPane().setBackground(new Color(88, 172, 165));
 OneAddyou.setSize(250, 200);
 OneAddyou.setResizable(false);
+OneAddyou.setModal(true); // Make it modal dialog
+OneAddyou.setLocationRelativeTo(this); // Center on main window
 
-jLabel10.setText("好友请求");
+jLabel10.setText("New Friend Request");
 jLabel10.setBounds(new Rectangle(7, 13, 143, 18));
 oneaddme.setBounds(new Rectangle(7, 57, 247, 18));
-addit.setText("接受");
+oneaddme.setForeground(Color.BLUE); // Make text stand out
+
+addit.setText("Accept");
 addit.setBounds(new Rectangle(19, 124, 93, 29));
+addit.setBackground(new Color(100, 200, 100)); // Green background
+addit.setForeground(Color.WHITE);
 addit.addMouseListener(new java.awt.event.MouseAdapter() {
     public void mouseClicked(MouseEvent e) {
         addit_mouseClicked(e);
     }
 });
-iknow.setText("知道了");
+
+iknow.setText("Decline");
 iknow.setBounds(new Rectangle(164, 124, 79, 29));
+iknow.setBackground(new Color(200, 100, 100)); // Red background
+iknow.setForeground(Color.WHITE);
 iknow.addMouseListener(new java.awt.event.MouseAdapter() {
     public void mouseClicked(MouseEvent e) {
         iknow_mouseClicked(e);
@@ -874,6 +997,11 @@ OneAddyou.getContentPane().add(iknow, null);
                 sendtext.append(sendtext.getText());
                 e2.printStackTrace();
             }
+            finally {
+    closeQuietly(sendSocket);
+    closeQuietly(receiveSocket);
+    closeQuietly(socket);
+}
             //end offline
 
             //Send logout message to server
@@ -884,6 +1012,23 @@ OneAddyou.getContentPane().add(iknow, null);
 
         }
     }
+private void closeQuietly(Socket socket) {
+    if (socket != null) {
+        try {
+            socket.close();
+        } catch (IOException e) {
+            // Ignore or log
+        }
+    }
+}
+
+private void closeQuietly(DatagramSocket datagramSocket) {
+    if (datagramSocket != null) {
+        datagramSocket.close();
+    }
+}
+
+
 
     void this_mousePressed(MouseEvent e) {
         jButton1.setIcon(icon1);
@@ -998,8 +1143,8 @@ void update_mousePressed(MouseEvent e) {//Update friend information
     // Check if there are any new friends to update
     if (tempname.isEmpty()) {
         JOptionPane.showMessageDialog(this, 
-            "没有找到新的好友可以更新", 
-            "信息", 
+            "No update on new friends", 
+            "Info", 
             JOptionPane.INFORMATION_MESSAGE);
         return;
     }
@@ -1087,43 +1232,60 @@ void update_mousePressed(MouseEvent e) {//Update friend information
     //tell friend i am online
 
     void online_mousePressed(MouseEvent e) {
-        out.println("getwhoaddme");
-        out.println(myjicq);
-
-        String whoip = " ";
-        do {
-            try {
-                whoip = in.readLine().trim();
-                if (whoip.equals("over"))
-                    break;
-                whoaddmesip.add(whoip);
-            } catch (IOException s) {
-                System.out.println("false getwhoaddme");
+    // First, notify everyone who added me that I'm online
+    try {
+        String s = "online" + myjicq;
+        s.trim();
+        System.out.println("Sending online notification: " + s);
+        byte[] data = s.getBytes();
+        
+        // Send to all friends who have me in their list
+        for (int i = 0; i < friendips.size(); i++) {
+            String friendip = friendips.get(i).toString().trim();
+            if (!friendip.equals("null") && !friendip.equals("0") && !friendip.equals(" ")) {
+                try {
+                    sendPacket = new DatagramPacket(data, s.length(),
+                            InetAddress.getByName(friendip), sendPort);
+                    sendSocket.send(sendPacket);
+                    System.out.println("Sent online notification to: " + friendip);
+                } catch (Exception ex) {
+                    System.out.println("Failed to notify " + friendip + ": " + ex.getMessage());
+                }
             }
-        } while (!whoip.equals("over"));
-        for (int i = 0; i < whoaddmesip.size(); i++) {
-            System.out.println(whoaddmesip.get(i));
         }
-        try {
-            String whoips;
-            String s = "online" + myjicq;
-            s.trim();
-
-            System.out.println(myjicq + " is online");
-            byte[] data = s.getBytes();
-            for (int i = 0; i < whoaddmesip.size(); i++) {
-                whoips = whoaddmesip.get(i).toString().trim();
-                sendPacket = new DatagramPacket(data, s.length(), InetAddress
-                        .getByName(whoips), sendPort);
-                sendSocket.send(sendPacket);
-            }//for
-        } catch (IOException e2) {
-            sendtext.append(sendtext.getText());
-            e2.printStackTrace();
-            System.exit(1);
+    } catch (Exception e2) {
+        e2.printStackTrace();
+    }
+    
+    // Then check for pending requests
+    out.println("getpendingrequests");
+    out.println(myjicq);
+    
+    try {
+        String pendingCount = in.readLine();
+        int count = Integer.parseInt(pendingCount);
+        System.out.println("Found " + count + " pending requests");
+        
+        for (int i = 0; i < count; i++) {
+            String requestData = in.readLine();
+            System.out.println("Request data: " + requestData);
+            String[] parts = requestData.split(":");
+            if (parts.length >= 2) {
+                int requesterId = Integer.parseInt(parts[0]);
+                String requesterName = parts[1];
+                
+                // Show notification for each pending request
+                JOptionPane.showMessageDialog(this, 
+                    "您有来自 " + requesterName + " (" + requesterId + ") 的好友请求!\n请点击'接受'来添加好友。", 
+                    "待处理的好友请求", JOptionPane.INFORMATION_MESSAGE);
+            }
         }
-
-    }//end tellfrienonline
+    } catch (IOException e2) {
+        sendtext.append(sendtext.getText());
+        e2.printStackTrace();
+        System.exit(1);
+    }
+}//end tellfrienonline
 
     void myinfo_mousePressed(MouseEvent e) {//Show my information
         if (fromunknow) {
@@ -1176,44 +1338,60 @@ void update_mousePressed(MouseEvent e) {//Update friend information
     }
 
     //add the one who add me as friend
-    void addit_mouseClicked(MouseEvent e) { //Accept friend request, add friend information to friend list
-    //Send friend request acceptance to server
-        out.println("addnewfriend");
-        out.println(tempgetjicq);
-        out.println(myjicq);
-        String thename = " ";
-        try {
-            String thejicqno, theip, thestatus, picinfo, email, sex, infos;
-            do {
-                thename = in.readLine();
-                if (thename.equals("over"))
-                    break;
-                friendnames.add(thename);
-                thejicqno = in.readLine();
-                friendjicq.add(new Integer(thejicqno));
-                theip = in.readLine();
-                friendips.add(theip);
-                thestatus = in.readLine();
-                status.add(thestatus);
-                picinfo = in.readLine();
-                picno.add(new Integer(picinfo));
-                email = in.readLine();
-                friendemail.add(email);
-                sex = in.readLine();
-                friendsex.add(sex);
-                infos = in.readLine();
-                friendinfo.add(infos);
-            } while (!thename.equals("over"));
-        } catch (IOException e1) {
-            System.out.println("false");
+    void addit_mouseClicked(MouseEvent e) { 
+    // Accept friend request, add friend information to friend list
+    // Send friend request acceptance to server
+    out.println("addnewfriend");
+    out.println(tempgetjicq);
+    out.println(myjicq);
+    
+    try {
+        String thename = in.readLine();
+        if (!thename.equals("over")) {
+            friendnames.add(thename);
+            String thejicqno = in.readLine();
+            friendjicq.add(new Integer(thejicqno));
+            String theip = in.readLine();
+            friendips.add(theip);
+            String thestatus = in.readLine();
+            status.add(thestatus);
+            String picinfo = in.readLine();
+            picno.add(new Integer(picinfo));
+            String email = in.readLine();
+            friendemail.add(email);
+            String sex = in.readLine();
+            friendsex.add(sex);
+            String infos = in.readLine();
+            friendinfo.add(infos);
+            
+            // Update the UI
+            DefaultListModel mm2 = (DefaultListModel) list.getModel();
+            int picid = Integer.parseInt(picinfo);
+            if (thestatus.equals("1")) {
+                mm2.addElement(new Object[] { thename,
+                        new ImageIcon(picsonline[picid]) });
+            } else {
+                mm2.addElement(new Object[] { thename,
+                        new ImageIcon(picsoffline[picid]) });
+            }
+            
+            JOptionPane.showMessageDialog(this, 
+                "Friend added successfully!", 
+                "Success", 
+                JOptionPane.INFORMATION_MESSAGE);
         }
-        int dddd = friendnames.size() - 1;
-        DefaultListModel mm2 = (DefaultListModel) list.getModel();
-        int picid;
-        picid = Integer.parseInt(picno.get(dddd).toString());
-        mm2.addElement(new Object[] { friendnames.get(dddd),
-                new ImageIcon(picsonline[picid]) });
+    } catch (IOException e1) {
+        System.out.println("Error adding friend: " + e1.getMessage());
+        JOptionPane.showMessageDialog(this, 
+            "Failed to add friend. Please try again.", 
+            "Error", 
+            JOptionPane.ERROR_MESSAGE);
     }
+    
+    OneAddyou.dispose(); // Close the dialog
+}
+
+
 
     void iknow_mouseClicked(MouseEvent e) {
         OneAddyou.dispose();
