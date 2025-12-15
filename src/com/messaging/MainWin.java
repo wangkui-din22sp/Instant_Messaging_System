@@ -552,8 +552,8 @@ public void CreatUDP() {
 }
 
 public MainWin(int s, String sername, int serport) {
-    udpPORT = 5001 + (s % 100);  // Different port for each user
-    sendPort = 5000 + (s % 100); // Different port for sending
+    udpPORT = 5001;  
+    sendPort = 5001;
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     try {
         myjicq = s;
