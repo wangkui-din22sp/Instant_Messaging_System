@@ -15,12 +15,14 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.Vector;
 import java.sql.SQLException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.lang.Thread;
+import java.net.SocketException;
+
 
 
 class ServerThread extends Thread { // Inherit from Thread
@@ -173,107 +175,40 @@ private String getUserName(int jicq) {
 
 // Helper method to get online user's IP (you need to track this)
 // You'll need to update your login handler to store user IPs
-private Map<Integer, String> onlineUsers = new HashMap<>();
 
-// Call this when user logs in
-private void setUserOnline(int jicq, String ip) {
-    onlineUsers.put(jicq, ip);
-    System.out.println("User " + jicq + " set online with IP: " + ip);
-}
-
-// Call this when user logs out
-private void setUserOffline(int jicq) {
-    onlineUsers.remove(jicq);
-    System.out.println("User " + jicq + " set offline");
-}
-
-// Get online user IP
-private String getOnlineUserIp(int jicq) {
-    return onlineUsers.get(jicq);
-}
 // Helper method to get online user's IP (add to Server class)
 
 
 
 // Helper method to notify friends when a user goes offline
-private void notifyFriendsOffline(int userId) {
-    System.out.println("Notifying friends that user " + userId + " is going offline");
-    
-    Connection conn = null;
-    PreparedStatement pstmt = null;
-    ResultSet rs = null;
-    
-    try {
-        Class.forName("org.postgresql.Driver");
-        conn = DriverManager.getConnection(
-            "jdbc:postgresql://localhost:5432/javaicq",
-            "postgres",
-            "admin"
-        );
-        
-        // Get all friends of this user - use correct column names
-        String sql = "SELECT friend FROM friend WHERE icqno = ? " +
-                    "UNION " +
-                    "SELECT icqno FROM friend WHERE friend = ?";
-        pstmt = conn.prepareStatement(sql);
-        pstmt.setInt(1, userId);
-        pstmt.setInt(2, userId);
-        rs = pstmt.executeQuery();
-        
-        int notifiedFriends = 0;
-        while (rs.next()) {
-            int friendId = rs.getInt(1);
-            
-            // Check if friend is online
-            String friendIp = Server.getOnlineUserIp(friendId);
-            if (friendIp != null && !friendIp.equals("null") && !friendIp.isEmpty()) {
-                // Send UDP offline notification to friend
-                sendUdpOfflineNotification(friendIp, userId);
-                notifiedFriends++;
-                System.out.println("Sent offline notification to friend " + friendId + " at IP: " + friendIp);
-            }
-        }
-        
-        System.out.println("Notified " + notifiedFriends + " friends about user " + userId + " going offline");
-        
-    } catch (Exception e) {
-        System.out.println("Error getting friend list for user " + userId + ": " + e.getMessage());
-        e.printStackTrace();
-    } finally {
-        try { if (rs != null) rs.close(); } catch (SQLException e) {}
-        try { if (pstmt != null) pstmt.close(); } catch (SQLException e) {}
-        try { if (conn != null) conn.close(); } catch (SQLException e) {}
-    }
-}
 
 // Update the existing sendUdpNotification method or create a new one
 // This method can send any type of UDP message
-private void sendUdpNotification(String targetIp, String message, int port) {
+
+// Helper method with default port (5001)
+
+// Helper method to send UDP notifications
+private void sendUdpNotification(String targetIp, String message) {
     try {
         byte[] udpData = message.getBytes();
         
         DatagramSocket udpSocket = new DatagramSocket();
         DatagramPacket packet = new DatagramPacket(udpData, udpData.length, 
-                InetAddress.getByName(targetIp), port);
+                InetAddress.getByName(targetIp), 5001);
         udpSocket.send(packet);
         udpSocket.close();
         
-        System.out.println("Sent UDP notification to " + targetIp + ":" + port + 
+        System.out.println("Sent UDP notification to " + targetIp + ":" + 5001 + 
                           " with message: " + message);
         
     } catch (Exception e) {
-        System.out.println("Failed to send UDP notification to " + targetIp + ":" + port + 
+        System.out.println("Failed to send UDP notification to " + targetIp + 
                           ": " + e.getMessage());
     }
 }
 
-// Helper method with default port (5001)
-private void sendUdpNotification(String targetIp, String message) {
-    sendUdpNotification(targetIp, message, 5001);
-}
-
 // Helper method to send UDP offline notification
-private void sendUdpOfflineNotification(String friendIp, int offlineUserId) {
+public void sendUdpOfflineNotification(String friendIp, int offlineUserId) {
     try {
         String udpMessage = "offline" + offlineUserId;
         byte[] udpData = udpMessage.getBytes();
@@ -300,38 +235,7 @@ private void sendUdpOfflineNotification(String friendIp, int offlineUserId) {
 // Update user online status in database
 // Helper method to update user online status in database
 // Helper method to update user online status in database
-private static void updateUserOnlineStatus(int jicq, String ip, int status) {
-    Connection conn = null;
-    PreparedStatement pstmt = null;
-    
-    try {
-        Class.forName("org.postgresql.Driver");
-        conn = DriverManager.getConnection(
-            "jdbc:postgresql://localhost:5432/javaicq",
-            "postgres",
-            "admin"
-        );
-        
-        // Use boolean true/false instead of integer 1/0
-        String sql = "UPDATE icq SET ip = ?, status = ? WHERE icqno = ?";
-        pstmt = conn.prepareStatement(sql);
-        pstmt.setString(1, ip);
-        pstmt.setBoolean(2, status == 1);  // Convert 1 to true, 0 to false
-        pstmt.setInt(3, jicq);
-        int rows = pstmt.executeUpdate();
-        
-        System.out.println("Updated user " + jicq + " status to " + 
-                          (status == 1 ? "online" : "offline") + 
-                          " with IP: " + ip + " (rows affected: " + rows + ")");
-        
-    } catch (Exception e) {
-        System.out.println("Error updating online status for user " + jicq + ": " + e.getMessage());
-        e.printStackTrace();
-    } finally {
-        try { if (pstmt != null) pstmt.close(); } catch (SQLException e) {}
-        try { if (conn != null) conn.close(); } catch (SQLException e) {}
-    }
-}
+
 
 
 
@@ -395,12 +299,16 @@ private void sendPendingFriendRequests(int userId, String userIp) {
         try {
             while (true) {
                 String str = in.readLine(); // Get input string
-                if (str == null) {
+               
                 // Client disconnected, break out of the loop
-                System.out.println("Client disconnected or sent null");
-                break;
+                
+                if (str == null || str.equals("end")) break; // If "end", close connection
+                else if (str.equals("setudpport")) {
+    int userId = Integer.parseInt(in.readLine());
+    String udpPortStr = in.readLine();
+    System.out.println("User " + userId + " reports UDP port: " + udpPortStr);
+    // You could store this in a separate map if needed
 }
-                if (str.equals("end")) break; // If "end", close connection
    else if (str.equals("login")) {
     System.out.println("=== LOGIN ATTEMPT STARTED ===");
     
@@ -467,13 +375,13 @@ private void sendPendingFriendRequests(int userId, String userIp) {
             
             // Store in online users map
             if (Server.onlineUsers == null) {
-                Server.onlineUsers = new HashMap<>();
+                Server.onlineUsers = new ConcurrentHashMap<>();
             }
             Server.onlineUsers.put(userId, userIp);
             System.out.println("User " + userId + " is now online at IP: " + userIp);
             
             // Update database with online status - ALSO USE POSTGRESQL
-            updateUserOnlineStatus(userId, userIp, 1); // 1 = online
+            Server.updateUserOnlineStatus(userId, userIp, 1); // 1 = online
             
             // Also, check and send any pending friend requests for this user
             sendPendingFriendRequests(userId, userIp);
@@ -631,117 +539,7 @@ private void sendPendingFriendRequests(int userId, String userIp) {
                 // Handle reading friend data when user logs in
                 // Handle user sending a friend request
 // In ServerThread.run() method, inside the main loop
-else if (str.equals("addfriend")) {
-    System.out.println("Processing friend request...");
-    
-    // Read friend JICQ (the one being added)
-    String friendJicqStr = in.readLine();
-    // Read my JICQ (the one making the request)
-    String myJicqStr = in.readLine();
-    
-    System.out.println("User " + myJicqStr + " wants to add friend " + friendJicqStr);
-    
-    if (friendJicqStr == null || myJicqStr == null) {
-        out.println("error");
-        System.out.println("Error: Null values in friend request");
-        return;
-    }
-    
-    try {
-        int friendJicq = Integer.parseInt(friendJicqStr);
-        int myJicq = Integer.parseInt(myJicqStr);
-        
-        // Check if trying to add self
-        if (friendJicq == myJicq) {
-            out.println("cannot_add_self");
-            System.out.println("Cannot add self as friend");
-            return;
-        }
-        
-        // Check if already friends
-        if (areFriends(myJicq, friendJicq)) {
-            out.println("already_friends");
-            System.out.println("Users are already friends");
-            return;
-        }
-        
-        // Check if request already exists
-        if (hasPendingRequest(myJicq, friendJicq)) {
-            out.println("request_exists");
-            System.out.println("Friend request already exists");
-            return;
-        }
-        
-        // Check if reverse request exists
-        if (hasPendingRequest(friendJicq, myJicq)) {
-            out.println("reverse_request_exists");
-            System.out.println("Reverse friend request exists");
-            return;
-        }
-        
-        // Create the friend request in database
-        if (createFriendRequest(myJicq, friendJicq)) {
-            System.out.println("Friend request created from " + myJicq + " to " + friendJicq);
-            
-            // Get friend's information for notification
-            String friendNickname = getUserName(friendJicq);
-            String myNickname = getUserName(myJicq);
-            
-            System.out.println("Friend " + friendJicq + " (" + friendNickname + ") is online at IP " + getOnlineUserIp(friendJicq));
-            
-            // Check if friend is online and send UDP notification
-            String friendIp = getOnlineUserIp(friendJicq);
-            if (friendIp != null && !friendIp.equals("null") && !friendIp.isEmpty()) {
-                System.out.println("Should send UDP notification about friend request from " + myJicq + " (" + myNickname + ")");
                 
-                // Send UDP notification to the friend
-                try {
-                    String udpMessage = "oneaddyou" + myJicq;
-                    byte[] udpData = udpMessage.getBytes();
-                    
-                    // Note: UDP port 5001 is where clients listen for notifications
-                    // If your client uses a different port, adjust this
-                    int udpPort = 5001; 
-                    
-                    DatagramSocket udpSocket = new DatagramSocket();
-                    DatagramPacket packet = new DatagramPacket(udpData, udpData.length, 
-                            InetAddress.getByName(friendIp), udpPort);
-                    udpSocket.send(packet);
-                    udpSocket.close();
-                    
-                    System.out.println("Sent UDP notification to " + friendIp + ":" + udpPort + " for request from " + myJicq);
-                    
-                    // Also update friend's online status in the database
-                    updateUserOnlineStatus(myJicq, friendIp, 1); // 1 = online
-                    
-                } catch (Exception e) {
-                    System.out.println("Failed to send UDP notification: " + e.getMessage());
-                    // Don't fail the request if UDP fails
-                }
-            } else {
-                System.out.println("Friend " + friendJicq + " is offline, notification stored for later");
-            }
-            
-            out.println("request_sent");
-            System.out.println("Successfully sent friend request from " + myJicq + " to " + friendJicq);
-        } else {
-            out.println("request_failed");
-            System.out.println("Failed to create friend request in database");
-        }
-        
-    } catch (NumberFormatException e) {
-        out.println("error");
-        System.out.println("Error parsing JICQ numbers: " + e.getMessage());
-    } catch (Exception e) {
-        out.println("error");
-        System.out.println("Unexpected error in addfriend: " + e.getMessage());
-        e.printStackTrace();
-    }
-    
-    System.out.println("End addfriend processing");
-}
-                // Handle user adding a friend
-                // Handle user sending a friend request
 else if (str.equals("addfriend")) {
     System.out.println("Processing friend request...");
     try {
@@ -1177,7 +975,7 @@ else if (str.equals("logout")) {
         }
         
         // Update database with offline status
-        updateUserOnlineStatus(userId, "null", 0); // 0 = offline
+        Server.updateUserOnlineStatus(userId, "null", 0); // 0 = offline
         
         // Also update the ip field to "null" in database
         Connection conn = null;
@@ -1188,7 +986,7 @@ else if (str.equals("logout")) {
             "postgres",
             "admin"
         );
-            String sql = "UPDATE icq SET ip = 'null', status = 0 WHERE jicqno = ?";
+            String sql = "UPDATE icq SET ip = 'null', status = false WHERE icqno = ?";
             pstmt = conn.prepareStatement(sql);
             pstmt.setInt(1, userId);
             int rowsUpdated = pstmt.executeUpdate();
@@ -1201,7 +999,7 @@ else if (str.equals("logout")) {
         }
         
         // Notify friends that this user is offline
-        notifyFriendsOffline(userId);
+        Server.notifyFriendsOffline(userId);
         
         out.println("ok");
         System.out.println("Successfully processed logout for user: " + userId);
@@ -1277,17 +1075,326 @@ else if (str.equals("getwhoaddme")) {
     }
 }
 
+// Add this class definition BEFORE the Server class
+class UdpServerThread extends Thread {
+    private DatagramSocket socket;
+    private boolean running;
+    
+    public UdpServerThread() throws SocketException {
+        socket = new DatagramSocket(5001);
+        System.out.println("UDP Server started on port 5001");
+    }
+    
+    public void run() {
+        running = true;
+        byte[] buffer = new byte[1024];
+        
+        while (running) {
+            try {
+                // Receive UDP packet
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                socket.receive(packet);
+                
+                String message = new String(packet.getData(), 0, packet.getLength());
+                String senderIp = packet.getAddress().getHostAddress();
+                
+                System.out.println("UDP Server received from " + senderIp + ": " + message);
+                
+                // Parse and relay message
+                if (message.startsWith("relay:")) {
+                    // Format: relay:targetJicq:actualMessage
+                    String[] parts = message.split(":", 3);
+                    if (parts.length == 3) {
+                        try {
+                            int targetJicq = Integer.parseInt(parts[1]);
+                            String actualMessage = parts[2];
+                            
+                            // Get target IP from onlineUsers map
+                            String targetIp = Server.getOnlineUserIp(targetJicq);
+                            
+                            if (targetIp != null && !targetIp.equals("null")) {
+                                // Forward to target
+                                byte[] forwardData = actualMessage.getBytes();
+                                DatagramPacket forwardPacket = new DatagramPacket(
+                                    forwardData, forwardData.length,
+                                    InetAddress.getByName(targetIp), 5001);
+                                socket.send(forwardPacket);
+                                
+                                System.out.println("Forwarded message to user " + targetJicq + 
+                                                 " at IP " + targetIp);
+                            } else {
+                                System.out.println("Target user " + targetJicq + " is offline or IP unknown");
+                            }
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid target JICQ format: " + parts[1]);
+                        }
+                    }
+                }
+                // Handle online/offline notifications
+                else if (message.startsWith("online:")) {
+                    // Format: online:userId
+                    String[] parts = message.split(":");
+                    if (parts.length == 2) {
+                        try {
+                            int userId = Integer.parseInt(parts[1]);
+                            // Get all friends of this user and notify them
+                            notifyFriendsOnline(userId, senderIp);
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid user ID format in online notification");
+                        }
+                    }
+                }
+                else if (message.startsWith("offline:")) {
+                    // Format: offline:userId
+                    String[] parts = message.split(":");
+                    if (parts.length == 2) {
+                        try {
+                            int userId = Integer.parseInt(parts[1]);
+                            // Get all friends of this user and notify them
+                            Server.notifyFriendsOffline(userId);
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid user ID format in offline notification");
+                        }
+                    }
+                }
+                // Handle file transfer requests
+                else if (message.startsWith("filerequest:")) {
+                    // Format: filerequest:targetJicq:filename
+                    String[] parts = message.split(":", 3);
+                    if (parts.length == 3) {
+                        try {
+                            int targetJicq = Integer.parseInt(parts[1]);
+                            String filename = parts[2];
+                            String targetIp = Server.getOnlineUserIp(targetJicq);
+                            
+                            if (targetIp != null && !targetIp.equals("null")) {
+                                String forwardMessage = "readyreceive" + filename;
+                                byte[] forwardData = forwardMessage.getBytes();
+                                DatagramPacket forwardPacket = new DatagramPacket(
+                                    forwardData, forwardData.length,
+                                    InetAddress.getByName(targetIp), 5001);
+                                socket.send(forwardPacket);
+                                
+                                System.out.println("Forwarded file request to user " + targetJicq);
+                            }
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid target JICQ format in file request");
+                        }
+                    }
+                }
+                
+            } catch (Exception e) {
+                e.printStackTrace();
+                if (running) {
+                    System.out.println("UDP Server error: " + e.getMessage());
+                }
+            }
+        }
+        
+        socket.close();
+    }
+    
+    // Helper method to notify friends when user comes online
+    private void notifyFriendsOnline(int userId, String userIp) {
+        System.out.println("Notifying friends that user " + userId + " is online from IP " + userIp);
+        
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        
+        try {
+            Class.forName("org.postgresql.Driver");
+            conn = DriverManager.getConnection(
+                "jdbc:postgresql://localhost:5432/javaicq",
+                "postgres",
+                "admin"
+            );
+            
+            // Get all friends of this user
+            String sql = "SELECT friend FROM friend WHERE icqno = ? " +
+                        "UNION " +
+                        "SELECT icqno FROM friend WHERE friend = ?";
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setInt(1, userId);
+            pstmt.setInt(2, userId);
+            rs = pstmt.executeQuery();
+            
+            int notifiedFriends = 0;
+            while (rs.next()) {
+                int friendId = rs.getInt(1);
+                
+                // Check if friend is online
+                String friendIp = Server.getOnlineUserIp(friendId);
+                if (friendIp != null && !friendIp.equals("null") && !friendIp.isEmpty()) {
+                    // Send UDP online notification to friend
+                    try {
+                        String udpMessage = "online" + userId;
+                        byte[] udpData = udpMessage.getBytes();
+                        DatagramPacket packet = new DatagramPacket(udpData, udpData.length,
+                                InetAddress.getByName(friendIp), 5001);
+                        socket.send(packet);
+                        notifiedFriends++;
+                        System.out.println("Sent online notification to friend " + friendId);
+                    } catch (Exception e) {
+                        System.out.println("Failed to notify friend " + friendId + ": " + e.getMessage());
+                    }
+                }
+            }
+            
+            System.out.println("Notified " + notifiedFriends + " friends about user " + userId + " coming online");
+            
+        } catch (Exception e) {
+            System.out.println("Error notifying friends: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            try { if (rs != null) rs.close(); } catch (SQLException e) {}
+            try { if (pstmt != null) pstmt.close(); } catch (SQLException e) {}
+            try { if (conn != null) conn.close(); } catch (SQLException e) {}
+        }
+    }
+    
+    // Helper method to notify friends when user goes offline
+    
+    
+    public void stopServer() {
+        running = false;
+        socket.close();
+    }
+}
+
 public class Server {
     
-    public static Map<Integer, String> onlineUsers = new HashMap<>();
+    public static Map<Integer, String> onlineUsers = new ConcurrentHashMap<>();
+private static UdpServerThread udpServer;
+    
     // Static method to get online user IP
-public static String getOnlineUserIp(int jicq) {
-    if (Server.onlineUsers == null) {
-        return null;
+    public static String getOnlineUserIp(int jicq) {
+        if (Server.onlineUsers == null) {
+            return null;
+        }
+        String ip = Server.onlineUsers.get(jicq);
+        return ip; // Returns null if user not online
     }
-    String ip = Server.onlineUsers.get(jicq);
-    return ip; // Returns null if user not online
+
+// Call this when user logs in
+private static void setUserOnline(int jicq, String ip) {
+    onlineUsers.put(jicq, ip);
+    System.out.println("User " + jicq + " set online with IP: " + ip);
 }
+
+// Call this when user logs out
+private static void setUserOffline(int jicq) {
+    onlineUsers.remove(jicq);
+    System.out.println("User " + jicq + " set offline");
+}
+    private static void sendUdpOfflineNotification(String friendIp, int offlineUserId) {
+        try {
+            String udpMessage = "offline" + offlineUserId;
+            byte[] udpData = udpMessage.getBytes();
+            
+            int udpPort = 5001;
+            
+            DatagramSocket udpSocket = new DatagramSocket();
+            DatagramPacket packet = new DatagramPacket(udpData, udpData.length, 
+                    InetAddress.getByName(friendIp), udpPort);
+            udpSocket.send(packet);
+            udpSocket.close();
+            
+            System.out.println("Sent UDP offline notification to " + friendIp + ":" + udpPort + 
+                              " about user " + offlineUserId + " going offline");
+            
+        } catch (Exception e) {
+            System.out.println("Failed to send UDP offline notification to " + friendIp + 
+                              " about user " + offlineUserId + ": " + e.getMessage());
+        }
+    }
+
+public static void notifyFriendsOffline(int userId) {
+    System.out.println("Notifying friends that user " + userId + " is going offline");
+    
+    Connection conn = null;
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+    
+    try {
+        Class.forName("org.postgresql.Driver");
+        conn = DriverManager.getConnection(
+            "jdbc:postgresql://localhost:5432/javaicq",
+            "postgres",
+            "admin"
+        );
+        
+        // Get all friends of this user - use correct column names
+        String sql = "SELECT friend FROM friend WHERE icqno = ? " +
+                    "UNION " +
+                    "SELECT icqno FROM friend WHERE friend = ?";
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setInt(1, userId);
+        pstmt.setInt(2, userId);
+        rs = pstmt.executeQuery();
+        
+        int notifiedFriends = 0;
+        while (rs.next()) {
+            int friendId = rs.getInt(1);
+            
+            // Check if friend is online
+            String friendIp = Server.getOnlineUserIp(friendId);
+            if (friendIp != null && !friendIp.equals("null") && !friendIp.isEmpty()) {
+                // Send UDP offline notification to friend
+                sendUdpOfflineNotification(friendIp, userId);
+                notifiedFriends++;
+                System.out.println("Sent offline notification to friend " + friendId + " at IP: " + friendIp);
+            }
+        }
+        
+        System.out.println("Notified " + notifiedFriends + " friends about user " + userId + " going offline");
+        
+    } catch (Exception e) {
+        System.out.println("Error getting friend list for user " + userId + ": " + e.getMessage());
+        e.printStackTrace();
+    } finally {
+        try { if (rs != null) rs.close(); } catch (SQLException e) {}
+        try { if (pstmt != null) pstmt.close(); } catch (SQLException e) {}
+        try { if (conn != null) conn.close(); } catch (SQLException e) {}
+    }
+}
+
+    
+public static void updateUserOnlineStatus(int jicq, String ip, int status) {
+    Connection conn = null;
+    PreparedStatement pstmt = null;
+    
+    try {
+        Class.forName("org.postgresql.Driver");
+        conn = DriverManager.getConnection(
+            "jdbc:postgresql://localhost:5432/javaicq",
+            "postgres",
+            "admin"
+        );
+        
+        // Use boolean true/false instead of integer 1/0
+        String sql = "UPDATE icq SET ip = ?, status = ? WHERE icqno = ?";
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, ip);
+        pstmt.setBoolean(2, status == 1);  // Convert 1 to true, 0 to false
+        pstmt.setInt(3, jicq);
+        int rows = pstmt.executeUpdate();
+        
+        System.out.println("Updated user " + jicq + " status to " + 
+                          (status == 1 ? "online" : "offline") + 
+                          " with IP: " + ip + " (rows affected: " + rows + ")");
+        
+    } catch (Exception e) {
+        System.out.println("Error updating online status for user " + jicq + ": " + e.getMessage());
+        e.printStackTrace();
+    } finally {
+        try { if (pstmt != null) pstmt.close(); } catch (SQLException e) {}
+        try { if (conn != null) conn.close(); } catch (SQLException e) {}
+    }
+}
+
+
+
     // Database initialization method - PostgreSQL version
     private static void initializeDatabase() {
     Connection conn = null;
@@ -1388,21 +1495,36 @@ public static String getOnlineUserIp(int jicq) {
 
     public static void main(String args[]) throws IOException {
         initializeDatabase();
-        // Bind to all network interfaces (0.0.0.0) instead of just localhost
+        
+        // Start TCP Server
         ServerSocket s = new ServerSocket(8080, 0, InetAddress.getByName("0.0.0.0"));
-        System.out.println("Server started on all interfaces: " + s);
+        System.out.println("TCP Server started on all interfaces: " + s);
+        
+        // Start UDP Server
+        try {
+            udpServer = new UdpServerThread();
+            System.out.println("UDP Server thread started");
+        } catch (SocketException e) {
+            System.err.println("Failed to start UDP server on port 5001: " + e.getMessage());
+            System.err.println("Make sure port 5001 is available and not blocked by firewall");
+            e.printStackTrace();
+        }
+        
         try {
             while (true) {
-                Socket socket = s.accept();//Continuously listen for client requests
-                System.out.println("Connection accepted:" + socket);
+                Socket socket = s.accept(); // Continuously listen for client requests
+                System.out.println("TCP Connection accepted:" + socket);
                 try {
-                    new ServerThread(socket);//Create new thread
+                    new ServerThread(socket); // Create new thread
                 } catch (IOException e) {
                     socket.close();
                 }
             }
         } finally {
             s.close();
-        }//Catch or finally
+            if (udpServer != null) {
+                udpServer.stopServer();
+            }
+        }
     }
-}//End of server program
+}

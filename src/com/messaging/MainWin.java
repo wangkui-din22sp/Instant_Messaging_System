@@ -277,7 +277,18 @@ public class MainWin extends JFrame implements Runnable {
     JButton directaddok = new JButton();
 
     
-
+// Add this method to the MainWin class
+private void sendRelayToServer(String message) {
+    try {
+        byte[] data = message.getBytes();
+        DatagramPacket packet = new DatagramPacket(data, message.length(),
+                InetAddress.getByName(server), udpPORT);
+        sendSocket.send(packet);
+        System.out.println("Sent relay message to server: " + message);
+    } catch (Exception e) {
+        System.out.println("Failed to send relay to server: " + e.getMessage());
+    }
+}
     /* Connect to server */
 /* Connect to server */
 public void ConnectServer(int myid) {
@@ -363,6 +374,14 @@ public void ConnectServer(int myid) {
             System.out.println("Received " + receivedLength + " bytes from " + 
                                infofromip + ": " + received);
             
+            // Check if it's from server (relayed message)
+            boolean fromServer = infofromip.equals(server) || 
+                               infofromip.equals("127.0.0.1") && server.equals("localhost");
+            
+            if (fromServer) {
+                System.out.println("Message relayed from server");
+            }
+            
             // First, check if it's the test packet
             if (received.equals("test from " + myjicq)) {
                 System.out.println("Ignoring test packet from self");
@@ -392,7 +411,7 @@ public void ConnectServer(int myid) {
                 }
                 
                 if (found) {
-                    friendips.setElementAt(infofromip, index3);
+                    // Don't update IP since it's relayed through server
                     DefaultListModel mm3 = (DefaultListModel) list.getModel();
                     int picid = Integer.parseInt(picno.get(index3).toString());
                     mm3.setElementAt(new Object[] { friendnames.get(index3),
@@ -452,70 +471,94 @@ public void ConnectServer(int myid) {
                 System.out.println("Sending file to " + theip);
             }
             else if (received.length() >= 12 && received.startsWith("readyreceive")) {
-                FileDialog fdsave = new FileDialog(this, "Save File", 1);
-                fdsave.setVisible(true);
-                String dir = fdsave.getDirectory();
-                String name = received.substring(12);
-                fdsave.setFile(name);
-                String s = "readysend";
-                byte[] data2 = s.getBytes();
-                try {
-                    sendPacket = new DatagramPacket(data2, s.length(),
-                            InetAddress.getByName(infofromip), sendPort);
-                    sendSocket.send(sendPacket);
-                    System.out.println("Ready to send " + received);
-                } catch (Exception e2) {
-                    System.out.println(e2.toString());
-                }
-                GetFile gf = new GetFile(dir, "receive");
-                gf.fileServer();
-            }
-            else if (received.length() > 0) {
-    // Regular message
+    FileDialog fdsave = new FileDialog(this, "Save File", 1);
+    fdsave.setVisible(true);
+    String dir = fdsave.getDirectory();
+    String name = received.substring(12);
+    fdsave.setFile(name);
+    
+    // NEW: Extract filename and handle properly
+    String filename = received.substring(12);
+    
+    // For file responses, we can't use theip - need different approach
+    // Just log and handle file saving
+    System.out.println("File transfer request received for: " + filename);
+    
+    // Store the filename for the file transfer class
+    file = (dir != null ? dir : "") + filename;
+    
+    // Send generic "readysend" response to the server
+    // The server will need to know who to relay this to
+    // Since we don't know the sender's JICQ here, we need a better approach
+    
+    // For now, we'll skip the relay and just prepare for file reception
+    // This is a limitation - we need the server to include sender info
+    
+    GetFile gf = new GetFile(dir, "receive");
+    gf.fileServer();
+}
+else if (received.length() > 0) {
+    // Regular message (could be direct or relayed)
     System.out.println("Received message: " + received);
     
-    // Check if from known friend
-    boolean fromFriend = false;
-    String tempFriendName = " ";
-    int tempIndex = -1;
-    
-    for (int i = 0; i < friendips.size(); i++) {
-        String friendip = friendips.get(i).toString().trim();
-        if (infofromip.equals(friendip)) {
-            fromFriend = true;
-            tempFriendName = friendnames.get(i).toString().trim();
-            tempIndex = i;
-            break;
+    // Check for relayed message format: "from:12345:message"
+    if (received.startsWith("from:")) {
+        // Format: "from:senderJicq:message"
+        String[] parts = received.split(":", 3);
+        if (parts.length == 3) {
+            try {
+                int senderJicq = Integer.parseInt(parts[1]);
+                String actualMessage = parts[2];
+                
+                // Find friend by JICQ
+                boolean found = false;
+                String friendName = "Friend";
+                int foundIndex = -1;
+                
+                for (int i = 0; i < friendjicq.size(); i++) {
+                    int friendId = Integer.parseInt(friendjicq.get(i).toString());
+                    if (friendId == senderJicq) {
+                        friendName = friendnames.get(i).toString().trim();
+                        foundIndex = i;
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (found) {
+                    final String displayName = friendName;
+                    final String message = actualMessage;
+                    final int idx = foundIndex;
+                    
+                    SwingUtilities.invokeLater(new Runnable() {
+                        public void run() {
+                            JOptionPane.showMessageDialog(MainWin.this, 
+                                "来自" + displayName + "的消息: " + message, 
+                                "新消息", JOptionPane.INFORMATION_MESSAGE);
+                            index4 = idx;
+                        }
+                    });
+                } else {
+                    // Unknown sender
+                    final String message = actualMessage;
+                    
+                    SwingUtilities.invokeLater(new Runnable() {
+                        public void run() {
+                            JOptionPane.showMessageDialog(MainWin.this, 
+                                "Unknown sender (JICQ: " + parts[1] + ") message: " + message, 
+                                "未知消息", JOptionPane.INFORMATION_MESSAGE);
+                            fromunknow = true;
+                        }
+                    });
+                }
+                continue; // Skip further processing
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid JICQ format in relayed message");
+            }
         }
     }
     
-    if (fromFriend) {
-        final String friendName = tempFriendName;  // Make final copy
-        final int foundIndex = tempIndex;          // Make final copy
-        final String message = received;           // Make final copy
-        
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                JOptionPane.showMessageDialog(MainWin.this, 
-                    "来自" + friendName + "的消息: " + message, 
-                    "新消息", JOptionPane.INFORMATION_MESSAGE);
-                index4 = foundIndex;  // Update class variable
-            }
-        });
-    } else {
-        // Unknown sender
-        final String message = received;  // Make final copy
-        final String senderIp = infofromip;  // Make final copy
-        
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                JOptionPane.showMessageDialog(MainWin.this, 
-                    "Unknown sender " + senderIp + " message: " + message, 
-                    "未知消息", JOptionPane.INFORMATION_MESSAGE);
-                fromunknow = true;
-            }
-        });
-    }
+    // Rest of existing message handling...
 }
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -532,13 +575,13 @@ public void CreatUDP() {
         receiveSocket = new DatagramSocket(udpPORT);
         System.out.println("DEBUG: Receive socket created on port: " + receiveSocket.getLocalPort());
         
-        // Test if we can send to ourselves
-        // String testMsg = "test";
-        // byte[] testData = testMsg.getBytes();
-        // DatagramPacket testPacket = new DatagramPacket(testData, testData.length, 
-        //         InetAddress.getByName("127.0.0.1"), udpPORT);
-        // sendSocket.send(testPacket);
-        // System.out.println("DEBUG: Sent test packet to localhost:" + udpPORT);
+        // Test if we can send to server
+        String testMsg = "test:" + myjicq;
+        byte[] testData = testMsg.getBytes();
+        DatagramPacket testPacket = new DatagramPacket(testData, testData.length, 
+                InetAddress.getByName(server), udpPORT);
+        sendSocket.send(testPacket);
+        System.out.println("DEBUG: Sent test packet to server:" + server + ":" + udpPORT);
         
     } catch (SocketException se) {
         se.printStackTrace();
@@ -547,7 +590,7 @@ public void CreatUDP() {
             "Port 5001 is already in use. Another instance may be running.",
             "Port Error", JOptionPane.ERROR_MESSAGE);
     } catch (IOException ie) {
-        System.out.println("Test send failed: " + ie.getMessage());
+        System.out.println("Test send to server failed: " + ie.getMessage());
     }
 }
 
@@ -577,22 +620,41 @@ public MainWin(int s, String sername, int serport) {
                 try {
                     ConnectServer(myjicq);
                     CreatUDP();
+                    
+                    // Send UDP port to server
                     try {
-    out.println("online");
-    out.println(myjicq);
-    System.out.println("Notified server of online status for user: " + myjicq);
-} catch (Exception ex) {
-    System.out.println("Failed to notify server: " + ex.getMessage());
-}
+                        out.println("setudpport");
+                        out.println(myjicq);
+                        out.println(udpPORT);
+                        System.out.println("Sent UDP port " + udpPORT + " to server");
+                    } catch (Exception ex) {
+                        System.out.println("Could not send UDP port to server: " + ex.getMessage());
+                    }
+                    
+                    try {
+                        out.println("online");
+                        out.println(myjicq);
+                        System.out.println("Notified server of online status for user: " + myjicq);
+                    } catch (Exception ex) {
+                        System.out.println("Failed to notify server: " + ex.getMessage());
+                    }
                     
                     // Start UDP listener thread
                     thread = new Thread(MainWin.this);
                     thread.start();
                     
-                     checkPendingFriendRequestsImmediate();
+                    checkPendingFriendRequestsImmediate();
+                    
+                    // Send initial online notification via UDP to server
+                    try {
+                        String onlineMsg = "online:" + myjicq;
+                        sendRelayToServer(onlineMsg);
+                    } catch (Exception ex) {
+                        System.out.println("Failed to send initial online notification: " + ex.getMessage());
+                    }
+                    
                 } catch (Exception e) {
                     e.printStackTrace();
-                    // Show error to user
                     SwingUtilities.invokeLater(new Runnable() {
                         public void run() {
                             JOptionPane.showMessageDialog(MainWin.this,
@@ -978,40 +1040,40 @@ OneAddyou.getContentPane().add(iknow, null);
     }
 
     protected void processWindowEvent(WindowEvent e) {//Handle window closing event
-        super.processWindowEvent(e);
-        if (e.getID() == WindowEvent.WINDOW_CLOSING) {
-            //tell who add me as friend offline
-            try {
-                String whoips;
-                String s = "offline" + myjicq;
-                s.trim();
-                System.out.println(s);
-                byte[] data = s.getBytes();
-                for (int i = 0; i < whoaddmesip.size(); i++) {
-                    whoips = whoaddmesip.get(i).toString().trim();
-                    sendPacket = new DatagramPacket(data, s.length(),
-                            InetAddress.getByName(whoips), sendPort);
-                    sendSocket.send(sendPacket);//Notify friends who added me that I am offline
-                }//for
-            } catch (IOException e2) {
-                sendtext.append(sendtext.getText());
-                e2.printStackTrace();
-            }
-            finally {
-    closeQuietly(sendSocket);
-    closeQuietly(receiveSocket);
-    closeQuietly(socket);
-}
-            //end offline
-
-            //Send logout message to server
-            out.println("logout");
-            out.println(myjicq);
+    super.processWindowEvent(e);
+    if (e.getID() == WindowEvent.WINDOW_CLOSING) {
+        // Send offline notification to server
+        try {
+            String s = "offline:" + myjicq;
+            s.trim();
+            System.out.println(s);
+            byte[] data = s.getBytes();
             
-            System.exit(0);
-
+            sendPacket = new DatagramPacket(data, s.length(),
+                    InetAddress.getByName(server), udpPORT);
+            sendSocket.send(sendPacket);//Notify server that I am offline
+            
+            System.out.println("Sent offline notification to server");
+            
+        } catch (IOException e2) {
+            sendtext.append(sendtext.getText());
+            e2.printStackTrace();
         }
+        finally {
+            closeQuietly(sendSocket);
+            closeQuietly(receiveSocket);
+            closeQuietly(socket);
+        }
+        //end offline
+
+        //Send logout message to server
+        out.println("logout");
+        out.println(myjicq);
+        
+        System.exit(0);
+
     }
+}
 private void closeQuietly(Socket socket) {
     if (socket != null) {
         try {
@@ -1081,31 +1143,32 @@ private void closeQuietly(DatagramSocket datagramSocket) {
         hello.show();
     }//Close chat record window
 
-    void send_mouseClicked(MouseEvent e) {//Send Message
+void send_mouseClicked(MouseEvent e) { // Send Message
     
-        try {
-            String s = sendtext.getText().trim();
-            System.out.println("Sending message:" + s);
-            byte[] data = s.getBytes();
-            System.out.println("Selected friend's IP address:" + theip);
-            theip.trim();
-            if (theip.equals("null") || theip.equals(" ") || theip.equals("0")) {
-                JOptionPane.showMessageDialog(this, "Please select a friend to send a message", "ok",
-                        JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                sendPacket = new DatagramPacket(data, s.length(), InetAddress
-                        .getByName(theip), sendPort);
-                sendSocket.send(sendPacket);
-            }
-
-        } catch (IOException e2) {
-            sendtext.append(sendtext.getText());
-            e2.printStackTrace();
-        }
-        sendtext.setText("");
-        senddata.dispose();
+    try {
+        String s = sendtext.getText().trim();
+        System.out.println("Sending message:" + s);
         
-    }//*******end send message
+        index = list.getSelectedIndex();
+        String friendJicq = friendjicq.get(index).toString();
+        
+        // Send message via server relay with "from:myjicq:message" format
+        String relayMessage = "from:" + myjicq + ":" + s;
+        byte[] data = relayMessage.getBytes();
+        
+        System.out.println("Sending via server relay to friend " + friendJicq);
+        sendPacket = new DatagramPacket(data, relayMessage.length(), 
+                InetAddress.getByName(server), udpPORT);
+        sendSocket.send(sendPacket);
+
+    } catch (IOException e2) {
+        sendtext.append(sendtext.getText());
+        e2.printStackTrace();
+    }
+    sendtext.setText("");
+    senddata.dispose();
+    
+}
 
     void getmessage_mousePressed(MouseEvent e) {//Receive Message
         System.out.println("zhy receiving1...." + received.toString().trim());
@@ -1232,27 +1295,18 @@ void update_mousePressed(MouseEvent e) {//Update friend information
     //tell friend i am online
 
     void online_mousePressed(MouseEvent e) {
-    // First, notify everyone who added me that I'm online
+    // Send online notification to server for relay to friends
     try {
-        String s = "online" + myjicq;
+        String s = "online:" + myjicq;
         s.trim();
-        System.out.println("Sending online notification: " + s);
+        System.out.println("Sending online notification via server: " + s);
         byte[] data = s.getBytes();
         
-        // Send to all friends who have me in their list
-        for (int i = 0; i < friendips.size(); i++) {
-            String friendip = friendips.get(i).toString().trim();
-            if (!friendip.equals("null") && !friendip.equals("0") && !friendip.equals(" ")) {
-                try {
-                    sendPacket = new DatagramPacket(data, s.length(),
-                            InetAddress.getByName(friendip), sendPort);
-                    sendSocket.send(sendPacket);
-                    System.out.println("Sent online notification to: " + friendip);
-                } catch (Exception ex) {
-                    System.out.println("Failed to notify " + friendip + ": " + ex.getMessage());
-                }
-            }
-        }
+        sendPacket = new DatagramPacket(data, s.length(),
+                InetAddress.getByName(server), udpPORT);
+        sendSocket.send(sendPacket);
+        System.out.println("Sent online notification to server");
+        
     } catch (Exception e2) {
         e2.printStackTrace();
     }
@@ -1310,28 +1364,26 @@ void update_mousePressed(MouseEvent e) {//Update friend information
     }
 
     void sendfile_mousePressed(MouseEvent e) {
-        java.awt.FileDialog fd = new java.awt.FileDialog(this, "Select File to Send");
-        fd.setVisible(true);
-        filepath = fd.getDirectory();
-        filename = fd.getFile().toString();
-        file = filepath + filename;
-        index = list.getSelectedIndex();
-        theip = friendips.get(index).toString();//ip address
-        if (theip.equals("null") || theip.equals(" ") || theip.equals("0")) {
-            JOptionPane.showMessageDialog(this, "Please select a friend to send a file", "ok",
-                    JOptionPane.INFORMATION_MESSAGE);
-        } else {
-            String s = "readyreceive" + filename;
-            byte[] data = s.getBytes();
-            try {
-                sendPacket = new DatagramPacket(data, s.length(), InetAddress
-                        .getByName(theip), sendPort);
-                sendSocket.send(sendPacket);
-            } catch (Exception e2) {
-                System.out.println(e2.toString());
-            }
-        }
+    java.awt.FileDialog fd = new java.awt.FileDialog(this, "Select File to Send");
+    fd.setVisible(true);
+    filepath = fd.getDirectory();
+    filename = fd.getFile().toString();
+    file = filepath + filename;
+    index = list.getSelectedIndex();
+    
+    // Send file request via server relay
+    String friendJicq = friendjicq.get(index).toString();
+    String s = "filerequest:" + friendJicq + ":readyreceive" + filename;
+    byte[] data = s.getBytes();
+    try {
+        sendPacket = new DatagramPacket(data, s.length(), 
+                InetAddress.getByName(server), udpPORT);
+        sendSocket.send(sendPacket);
+        System.out.println("Sent file request via server relay to friend " + friendJicq);
+    } catch (Exception e2) {
+        System.out.println(e2.toString());
     }
+}
 
     void hellook_mouseClicked(MouseEvent e) {//Close friend's information window
         hello.dispose();
@@ -1373,6 +1425,18 @@ void update_mousePressed(MouseEvent e) {//Update friend information
             } else {
                 mm2.addElement(new Object[] { thename,
                         new ImageIcon(picsoffline[picid]) });
+            }
+            
+            // Send online notification to new friend via server
+            try {
+                String onlineMsg = "online:" + myjicq;
+                byte[] onlineData = onlineMsg.getBytes();
+                DatagramPacket onlinePacket = new DatagramPacket(onlineData, onlineMsg.length(),
+                        InetAddress.getByName(server), udpPORT);
+                sendSocket.send(onlinePacket);
+                System.out.println("Sent online notification to new friend via server");
+            } catch (Exception ex) {
+                System.out.println("Failed to send online notification: " + ex.getMessage());
             }
             
             JOptionPane.showMessageDialog(this, 
