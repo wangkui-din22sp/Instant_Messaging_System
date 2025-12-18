@@ -38,7 +38,44 @@ class ServerThread extends Thread { // Inherit from Thread
         start(); // Start thread
     }
 
+    private void notifyNewFriendship(int user1, int user2, String user2Nickname, String user2Ip, boolean user2Online) {
+    System.out.println("Notifying users about new friendship: " + user1 + " and " + user2);
     
+    // Get user1's info
+    try (Connection conn = DriverManager.getConnection(
+            "jdbc:postgresql://localhost:5432/javaicq",
+            "postgres",
+            "admin");
+         PreparedStatement pstmt = conn.prepareStatement(
+             "SELECT nickname, ip, status FROM icq WHERE icqno = ?")) {
+        
+        pstmt.setInt(1, user1);
+        ResultSet rs = pstmt.executeQuery();
+        
+        if (rs.next()) {
+            String user1Nickname = rs.getString("nickname");
+            String user1Ip = rs.getString("ip");
+            boolean user1Online = rs.getBoolean("status");
+            
+            // Notify user2 about user1 (if online)
+            if (user2Online && user2Ip != null && !user2Ip.equals("null")) {
+                String messageToUser2 = "friend_added:" + user1 + ":" + user1Nickname;
+                sendUdpNotification(user2Ip, messageToUser2);
+                System.out.println("Notified user " + user2 + " about new friend " + user1);
+            }
+            
+            // Notify user1 about user2 (if online)
+            if (user1Online && user1Ip != null && !user1Ip.equals("null")) {
+                String messageToUser1 = "friend_added:" + user2 + ":" + user2Nickname;
+                sendUdpNotification(user1Ip, messageToUser1);
+                System.out.println("Notified user " + user1 + " about new friend " + user2);
+            }
+        }
+        
+    } catch (SQLException e) {
+        System.out.println("Error notifying users about friendship: " + e.getMessage());
+    }
+}
     // Helper method to check if two users are already friends
 private boolean areFriends(int user1, int user2) {
     Connection conn = null;
@@ -188,9 +225,15 @@ private String getUserName(int jicq) {
 // Helper method with default port (5001)
 
 // Helper method to send UDP notifications
+// Helper method to send UDP notifications
 private void sendUdpNotification(String targetIp, String message) {
+    if (targetIp == null || targetIp.equals("null") || targetIp.isEmpty()) {
+        System.out.println("Cannot send UDP notification: invalid IP address");
+        return;
+    }
+    
     try {
-        byte[] udpData = message.getBytes();
+        byte[] udpData = message.getBytes("UTF-8");
         
         DatagramSocket udpSocket = new DatagramSocket();
         DatagramPacket packet = new DatagramPacket(udpData, udpData.length, 
@@ -198,12 +241,10 @@ private void sendUdpNotification(String targetIp, String message) {
         udpSocket.send(packet);
         udpSocket.close();
         
-        System.out.println("Sent UDP notification to " + targetIp + ":" + 5001 + 
-                          " with message: " + message);
+        System.out.println("Sent UDP notification to " + targetIp + ":5001 - " + message);
         
     } catch (Exception e) {
-        System.out.println("Failed to send UDP notification to " + targetIp + 
-                          ": " + e.getMessage());
+        System.out.println("Failed to send UDP notification to " + targetIp + ": " + e.getMessage());
     }
 }
 
@@ -540,128 +581,221 @@ private void sendPendingFriendRequests(int userId, String userIp) {
                 // Handle user sending a friend request
 // In ServerThread.run() method, inside the main loop
                 
+// Handle user sending a friend request
+// Handle user sending a friend request
 else if (str.equals("addfriend")) {
-    System.out.println("Processing friend request...");
+    System.out.println("=== PROCESSING FRIEND REQUEST ===");
+    
+    String friendJicqStr = null;
+    String myJicqStr = null;
+    
     try {
-        Class.forName("org.postgresql.Driver");
-        Connection c6 = DriverManager.getConnection(
-            "jdbc:postgresql://localhost:5432/javaicq",
-            "postgres",
-            "admin"
-        );
+        // Read parameters first
+        friendJicqStr = in.readLine();
+        myJicqStr = in.readLine();
         
-        // Read parameters
-        int friendicqno = Integer.parseInt(in.readLine());  // Friend to add
-        int myicqno = Integer.parseInt(in.readLine());      // My JICQ
+        if (friendJicqStr == null || myJicqStr == null) {
+            System.out.println("Invalid request: null parameters");
+            out.println("error:invalid_request");
+            return;
+        }
+        
+        int friendicqno = Integer.parseInt(friendJicqStr.trim());
+        int myicqno = Integer.parseInt(myJicqStr.trim());
         
         System.out.println("User " + myicqno + " wants to add friend " + friendicqno);
         
-        // Check if user exists
-        String checkUserSql = "SELECT 1 FROM icq WHERE icqno = ?";
-        PreparedStatement checkUserStmt = c6.prepareStatement(checkUserSql);
-        checkUserStmt.setInt(1, friendicqno);
-        ResultSet userCheck = checkUserStmt.executeQuery();
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
         
-        if (!userCheck.next()) {
-            out.println("user_not_found");
-            System.out.println("Friend " + friendicqno + " not found");
-            c6.close();
-            return;
-        }
-        
-        // Check if already friends (in either direction)
-        String checkFriendSql = "SELECT 1 FROM friend WHERE (icqno = ? AND friend = ?) OR (icqno = ? AND friend = ?)";
-        PreparedStatement checkFriendStmt = c6.prepareStatement(checkFriendSql);
-        checkFriendStmt.setInt(1, myicqno);
-        checkFriendStmt.setInt(2, friendicqno);
-        checkFriendStmt.setInt(3, friendicqno);
-        checkFriendStmt.setInt(4, myicqno);
-        ResultSet friendCheck = checkFriendStmt.executeQuery();
-        
-        if (friendCheck.next()) {
-            out.println("already_friends");
-            System.out.println("Already friends: " + myicqno + " and " + friendicqno);
-            c6.close();
-            return;
-        }
-        
-        // Check if pending request already exists
-        String checkRequestSql = "SELECT 1 FROM friend_requests WHERE requester_jicq = ? AND recipient_jicq = ? AND status = 'pending'";
-        PreparedStatement checkRequestStmt = c6.prepareStatement(checkRequestSql);
-        checkRequestStmt.setInt(1, myicqno);
-        checkRequestStmt.setInt(2, friendicqno);
-        ResultSet requestCheck = checkRequestStmt.executeQuery();
-        
-        if (requestCheck.next()) {
-            out.println("request_exists");
-            System.out.println("Friend request already exists from " + myicqno + " to " + friendicqno);
-            c6.close();
-            return;
-        }
-        
-        // Check if there's a reverse request (friend wants to add me)
-        String checkReverseSql = "SELECT 1 FROM friend_requests WHERE requester_jicq = ? AND recipient_jicq = ? AND status = 'pending'";
-        PreparedStatement checkReverseStmt = c6.prepareStatement(checkReverseSql);
-        checkReverseStmt.setInt(1, friendicqno);
-        checkReverseStmt.setInt(2, myicqno);
-        ResultSet reverseCheck = checkReverseStmt.executeQuery();
-        
-        // Create friend request
-        String insertRequestSql = "INSERT INTO friend_requests (requester_jicq, recipient_jicq, status) VALUES (?, ?, 'pending')";
-        PreparedStatement insertRequestStmt = c6.prepareStatement(insertRequestSql);
-        insertRequestStmt.setInt(1, myicqno);
-        insertRequestStmt.setInt(2, friendicqno);
-        int rowsInserted = insertRequestStmt.executeUpdate();
-        
-        if (rowsInserted == 1) {
-            out.println("request_sent");
-            System.out.println("Friend request created from " + myicqno + " to " + friendicqno);
+        try {
+            // Get database connection
+            Class.forName("org.postgresql.Driver");
+            conn = DriverManager.getConnection(
+                "jdbc:postgresql://localhost:5432/javaicq",
+                "postgres",
+                "admin"
+            );
             
-            // Get friend's IP address to send UDP notification
-            String getIpSql = "SELECT ip, status FROM icq WHERE icqno = ?";
-            PreparedStatement getIpStmt = c6.prepareStatement(getIpSql);
-            getIpStmt.setInt(1, friendicqno);
-            ResultSet ipResult = getIpStmt.executeQuery();
+            // ============ 1. Check if friend exists ============
+            System.out.println("Checking if user exists: " + friendicqno);
+            String checkUserSql = "SELECT nickname, status, ip FROM icq WHERE icqno = ?";
+            pstmt = conn.prepareStatement(checkUserSql);
+            pstmt.setInt(1, friendicqno);
+            rs = pstmt.executeQuery();
             
-            if (ipResult.next()) {
-                String friendIp = ipResult.getString("ip");
-                boolean friendStatus = ipResult.getBoolean("status");
-                
-                // Send UDP notification if friend is online
-                if (friendIp != null && !friendIp.equals("null") && !friendIp.isEmpty() && friendStatus) {
-                    try {
-                        // Get my nickname for the notification
-                        String getMyNameSql = "SELECT nickname FROM icq WHERE icqno = ?";
-                        PreparedStatement getNameStmt = c6.prepareStatement(getMyNameSql);
-                        getNameStmt.setInt(1, myicqno);
-                        ResultSet nameResult = getNameStmt.executeQuery();
-                        
-                        if (nameResult.next()) {
-                            String myNickname = nameResult.getString("nickname");
-                            
-                            // Send UDP notification (this would be handled by a UDP server component)
-                            // For now, we'll log it
-                            System.out.println("Friend " + friendicqno + " is online at IP " + friendIp + 
-                                             ". Should send UDP notification about friend request from " + myNickname);
-                        }
-                    } catch (Exception e) {
-                        System.out.println("Error getting nickname: " + e.getMessage());
-                    }
-                }
+            if (!rs.next()) {
+                System.out.println("Friend " + friendicqno + " not found");
+                out.println("user_not_found");
+                return;
             }
-        } else {
-            out.println("request_failed");
-            System.out.println("Failed to create friend request");
+            
+            String friendNickname = rs.getString("nickname");
+            boolean friendStatus = rs.getBoolean("status");
+            String friendIp = rs.getString("ip");
+            rs.close();
+            pstmt.close();
+            
+            // ============ 2. Check if trying to add yourself ============
+            if (friendicqno == myicqno) {
+                System.out.println("User cannot add themselves as friend");
+                out.println("error:cannot_add_self");
+                return;
+            }
+            
+            // ============ 3. Check if already friends ============
+            System.out.println("Checking if already friends");
+            String checkFriendSql = "SELECT 1 FROM friend WHERE (icqno = ? AND friend = ?) OR (icqno = ? AND friend = ?)";
+            pstmt = conn.prepareStatement(checkFriendSql);
+            pstmt.setInt(1, myicqno);
+            pstmt.setInt(2, friendicqno);
+            pstmt.setInt(3, friendicqno);
+            pstmt.setInt(4, myicqno);
+            rs = pstmt.executeQuery();
+            
+            if (rs.next()) {
+                System.out.println("Already friends: " + myicqno + " and " + friendicqno);
+                out.println("already_friends");
+                return;
+            }
+            rs.close();
+            pstmt.close();
+            
+            // ============ 4. Check if pending request exists ============
+            System.out.println("Checking for existing pending request");
+            String checkRequestSql = "SELECT 1 FROM friend_requests WHERE requester_jicq = ? AND recipient_jicq = ? AND status = 'pending'";
+            pstmt = conn.prepareStatement(checkRequestSql);
+            pstmt.setInt(1, myicqno);
+            pstmt.setInt(2, friendicqno);
+            rs = pstmt.executeQuery();
+            
+            if (rs.next()) {
+                System.out.println("Friend request already exists from " + myicqno + " to " + friendicqno);
+                out.println("request_exists");
+                return;
+            }
+            rs.close();
+            pstmt.close();
+            
+            // ============ 5. Check if reverse request exists ============
+            System.out.println("Checking for reverse request");
+            String checkReverseSql = "SELECT 1 FROM friend_requests WHERE requester_jicq = ? AND recipient_jicq = ? AND status = 'pending'";
+            pstmt = conn.prepareStatement(checkReverseSql);
+            pstmt.setInt(1, friendicqno);
+            pstmt.setInt(2, myicqno);
+            rs = pstmt.executeQuery();
+            
+            if (rs.next()) {
+                System.out.println("Reverse request exists - auto-accepting");
+                
+                // Auto-accept the reverse request
+                String acceptSql = "UPDATE friend_requests SET status = 'accepted' WHERE requester_jicq = ? AND recipient_jicq = ?";
+                pstmt = conn.prepareStatement(acceptSql);
+                pstmt.setInt(1, friendicqno);
+                pstmt.setInt(2, myicqno);
+                pstmt.executeUpdate();
+                pstmt.close();
+                
+                // Add friendship in both directions
+                String insertFriend1Sql = "INSERT INTO friend (icqno, friend) VALUES (?, ?)";
+                pstmt = conn.prepareStatement(insertFriend1Sql);
+                pstmt.setInt(1, myicqno);
+                pstmt.setInt(2, friendicqno);
+                pstmt.executeUpdate();
+                pstmt.close();
+                
+                String insertFriend2Sql = "INSERT INTO friend (icqno, friend) VALUES (?, ?)";
+                pstmt = conn.prepareStatement(insertFriend2Sql);
+                pstmt.setInt(1, friendicqno);
+                pstmt.setInt(2, myicqno);
+                pstmt.executeUpdate();
+                pstmt.close();
+                
+                out.println("auto_accepted");
+                System.out.println("Auto-accepted reverse friend request");
+                
+                // Notify both users
+                notifyNewFriendship(myicqno, friendicqno, friendNickname, friendIp, friendStatus);
+                return;
+            }
+            rs.close();
+            pstmt.close();
+            
+            // ============ 6. Create friend request ============
+            System.out.println("Creating new friend request");
+            String insertRequestSql = "INSERT INTO friend_requests (requester_jicq, recipient_jicq, status, request_time) VALUES (?, ?, 'pending', CURRENT_TIMESTAMP)";
+            pstmt = conn.prepareStatement(insertRequestSql);
+            pstmt.setInt(1, myicqno);
+            pstmt.setInt(2, friendicqno);
+            int rowsInserted = pstmt.executeUpdate();
+            
+            if (rowsInserted == 1) {
+                System.out.println("Friend request created from " + myicqno + " to " + friendicqno);
+                out.println("request_sent");
+                
+                // ============ 7. Notify friend if online ============
+                if (friendIp != null && !friendIp.equals("null") && !friendIp.isEmpty() && friendStatus) {
+                    // Get my nickname for the notification
+                    String getMyNameSql = "SELECT nickname FROM icq WHERE icqno = ?";
+                    PreparedStatement getNameStmt = conn.prepareStatement(getMyNameSql);
+                    getNameStmt.setInt(1, myicqno);
+                    ResultSet nameResult = getNameStmt.executeQuery();
+                    
+                    if (nameResult.next()) {
+                        String myNickname = nameResult.getString("nickname");
+                        
+                        // Send UDP notification
+                        System.out.println("Friend " + friendicqno + " is online at IP " + friendIp);
+                        
+                        // Use the new notification format
+                        String udpMessage = "friend_request:" + myicqno + ":" + myNickname;
+                        sendUdpNotification(friendIp, udpMessage);
+                        
+                        System.out.println("Sent UDP friend request notification to " + friendicqno);
+                    }
+                    nameResult.close();
+                    getNameStmt.close();
+                } else {
+                    System.out.println("Friend " + friendicqno + " is offline (IP: " + friendIp + ", Status: " + friendStatus + ")");
+                }
+                
+            } else {
+                System.out.println("Failed to create friend request");
+                out.println("request_failed");
+            }
+            
+        } catch (ClassNotFoundException e) {
+            System.out.println("Database driver error: " + e.getMessage());
+            out.println("error:database");
+        } catch (SQLException e) {
+            System.out.println("Database error: " + e.getMessage());
+            e.printStackTrace();
+            out.println("error:database");
+        } finally {
+            // Close resources
+            try { if (rs != null) rs.close(); } catch (SQLException e) {}
+            try { if (pstmt != null) pstmt.close(); } catch (SQLException e) {}
+            try { if (conn != null) conn.close(); } catch (SQLException e) {}
         }
         
-        c6.close();
+    } catch (NumberFormatException e) {
+        System.out.println("Invalid number format. Friend: " + friendJicqStr + ", My: " + myJicqStr);
+        out.println("error:invalid_format");
     } catch (Exception e) {
+        System.out.println("Unexpected error in addfriend: " + e.getMessage());
         e.printStackTrace();
-        out.println("error");
-        System.out.println("Error in addfriend: " + e.getMessage());
+        out.println("error:unexpected");
     }
-    System.out.println("End addfriend processing");
-} // End addfriend (now friend request)
+    
+    System.out.println("=== END FRIEND REQUEST PROCESSING ===");
+} // End addfriend
+
+// Helper method to notify both users about new friendship
+
+
+// Helper method to notify both users about new friendship
+
 
 // Handle accepting friend request
 else if (str.equals("acceptfriendrequest")) {

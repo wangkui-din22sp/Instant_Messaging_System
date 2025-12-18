@@ -470,6 +470,50 @@ public void ConnectServer(int myid) {
                 sf.fileClient();
                 System.out.println("Sending file to " + theip);
             }
+
+            else if (received.startsWith("friend_request:")) {
+    // Format: friend_request:requesterId:requesterName
+    String[] parts = received.split(":", 3);
+    if (parts.length == 3) {
+        try {
+            final int requesterId = Integer.parseInt(parts[1]);
+            final String requesterName = parts[2];
+            
+            SwingUtilities.invokeLater(() -> {
+                oneaddme.setText(requesterName + " (" + requesterId + ") wants to add you as friend");
+                tempgetjicq = requesterId;
+                OneAddyou.setLocationRelativeTo(MainWin.this);
+                OneAddyou.setVisible(true);
+            });
+            
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid friend request format: " + received);
+        }
+    }
+}
+else if (received.startsWith("friend_added:")) {
+    // Format: friend_added:friendId:friendName
+    String[] parts = received.split(":", 3);
+    if (parts.length == 3) {
+        try {
+            final int friendId = Integer.parseInt(parts[1]);
+            final String friendName = parts[2];
+            
+            SwingUtilities.invokeLater(() -> {
+                JOptionPane.showMessageDialog(MainWin.this,
+                    "You are now friends with " + friendName + " (JICQ: " + friendId + ")",
+                    "New Friend",
+                    JOptionPane.INFORMATION_MESSAGE);
+                
+                // Refresh friend list if needed
+                // You might want to call update_mousePressed() or similar
+            });
+            
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid friend added format: " + received);
+        }
+    }
+}
             else if (received.length() >= 12 && received.startsWith("readyreceive")) {
     FileDialog fdsave = new FileDialog(this, "Save File", 1);
     fdsave.setVisible(true);
@@ -1043,6 +1087,7 @@ OneAddyou.getContentPane().add(iknow, null);
     super.processWindowEvent(e);
     if (e.getID() == WindowEvent.WINDOW_CLOSING) {
         // Send offline notification to server
+        if (sendSocket != null && !sendSocket.isClosed())
         try {
             String s = "offline:" + myjicq;
             s.trim();
@@ -1059,11 +1104,16 @@ OneAddyou.getContentPane().add(iknow, null);
             sendtext.append(sendtext.getText());
             e2.printStackTrace();
         }
-        finally {
+                if (out != null) {
+            out.println("logout");
+            out.println(myjicq);
+        }
+        
             closeQuietly(sendSocket);
             closeQuietly(receiveSocket);
             closeQuietly(socket);
-        }
+        
+        
         //end offline
 
         //Send logout message to server
