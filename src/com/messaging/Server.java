@@ -943,12 +943,22 @@ else if (str.equals("getpendingrequests")) {
         pendingStmt.setInt(1, myJicq);
         ResultSet pendingResult = pendingStmt.executeQuery();
         
-        int count = 0;
+       // 1. 先把结果存到一个临时列表里，这样我们才能知道总数
+        java.util.List<String> requests = new java.util.ArrayList<>();
         while (pendingResult.next()) {
-            out.println(pendingResult.getInt("requester_jicq") + ":" + pendingResult.getString("nickname"));
-            count++;
+            requests.add(pendingResult.getInt("requester_jicq") + ":" + pendingResult.getString("nickname"));
         }
-        out.println("over");
+        
+        // 2. 最关键的一步：先给客户端发送请求的总数！
+        out.println(requests.size()); 
+        
+        // 3. 然后再把具体的请求数据一条条发过去
+        for (String req : requests) {
+            out.println(req);
+        }
+        
+        // 注意：如果你改了这里，并且发送了总数，就不需要发送 "over" 了，
+        // 因为客户端的代码是用一个 for 循环按次数读取的，没有去判断 "over"。
         
         System.out.println("Found " + count + " pending requests for user " + myJicq);
         

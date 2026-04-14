@@ -369,7 +369,7 @@ public void ConnectServer(int myid) {
             int receivedLength = receivePacket.getLength();
             index3 = 0;
             received = new String(data, 0, receivedLength);
-            received.trim();
+            received = received.trim();  // ✅ 必须重新赋值，把网络数据包末尾的乱码和回车彻底删掉
             
             System.out.println("Received " + receivedLength + " bytes from " + 
                                infofromip + ": " + received);
@@ -476,7 +476,7 @@ public void ConnectServer(int myid) {
     String[] parts = received.split(":", 3);
     if (parts.length == 3) {
         try {
-            final int requesterId = Integer.parseInt(parts[1]);
+            final int requesterId = Integer.parseInt(parts[1].trim());
             final String requesterName = parts[2];
             
             SwingUtilities.invokeLater(() -> {
