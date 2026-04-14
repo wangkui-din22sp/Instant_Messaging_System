@@ -960,7 +960,7 @@ else if (str.equals("getpendingrequests")) {
         // 注意：如果你改了这里，并且发送了总数，就不需要发送 "over" 了，
         // 因为客户端的代码是用一个 for 循环按次数读取的，没有去判断 "over"。
         
-        System.out.println("Found " + count + " pending requests for user " + myJicq);
+        System.out.println("Found " + requests.size() + " pending requests for user " + myJicq); // ✅ 使用 requests.size() 获取总数
         
         conn.close();
     } catch (Exception e) {
