@@ -582,6 +582,64 @@ private void sendPendingFriendRequests(int userId, String userIp) {
 // In ServerThread.run() method, inside the main loop
                 
 // Handle user sending a friend request
+// ==================== 补回缺失的好友列表处理模块 ====================
+else if (str.equals("friend")) {
+    try {
+        int userId = Integer.parseInt(in.readLine());
+        Class.forName("org.postgresql.Driver");
+        Connection conn = DriverManager.getConnection(
+            "jdbc:postgresql://localhost:5432/javaicq", 
+            "postgres", 
+            "admin"
+        );
+        
+        // 查询好友（双向）
+        String sql = "SELECT icqno, nickname, ip, status, pic, email, sex, info FROM icq WHERE icqno IN " +
+                     "(SELECT friend FROM friend WHERE icqno = ? UNION SELECT icqno FROM friend WHERE friend = ?)";
+        PreparedStatement pstmt = conn.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        pstmt.setInt(1, userId);
+        pstmt.setInt(2, userId);
+        ResultSet rs = pstmt.executeQuery();
+        
+        // 计算好友数量
+        int count = 0;
+        if (rs.last()) {
+            count = rs.getRow();
+            rs.beforeFirst(); // 指针移回开头
+        }
+        
+        // 1. 发送好友总数
+        out.println(count);
+        
+        // 2. 发送每个好友的详细信息
+        while (rs.next()) {
+            out.println(rs.getString("nickname"));
+            out.println(rs.getInt("icqno"));
+            String ip = rs.getString("ip");
+            out.println(ip != null ? ip : "null");
+            out.println(rs.getBoolean("status") ? "1" : "0");
+            out.println(rs.getInt("pic"));
+            String email = rs.getString("email");
+            out.println(email != null ? email : " ");
+            String sex = rs.getString("sex");
+            out.println(sex != null ? sex : " ");
+            String info = rs.getString("info");
+            out.println(info != null ? info : " ");
+        }
+        out.println("over");
+        
+        rs.close();
+        pstmt.close();
+        conn.close();
+    } catch (Exception e) {
+        e.printStackTrace();
+        out.println("0");
+        out.println("over");
+    }
+}
+// =================================================================
+
+
 // Handle user sending a friend request
 else if (str.equals("addfriend")) {
     System.out.println("=== PROCESSING FRIEND REQUEST ===");

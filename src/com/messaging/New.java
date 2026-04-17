@@ -50,7 +50,7 @@ public class New extends JFrame {//Login window
 
     JTextField serverport = new JTextField();
 
-    sunPanel sunPanel = new sunPanel();
+    JPanel sunPanel = new JPanel();
 
     //Constructor
     public New() {
