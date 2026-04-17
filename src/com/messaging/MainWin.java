@@ -1194,36 +1194,42 @@ private void closeQuietly(DatagramSocket datagramSocket) {
     }//Close chat record window
 
 void send_mouseClicked(MouseEvent e) { // Send Message
-    
-    try {
-        String s = sendtext.getText().trim();
-        System.out.println("Sending message:" + s);
-        
-        index = list.getSelectedIndex();
-        String friendJicq = friendjicq.get(index).toString();
-        
-        // Send message via server relay with "from:myjicq:message" format
-        String relayMessage = "from:" + myjicq + ":" + s;
-        byte[] data = relayMessage.getBytes();
-        
-        System.out.println("Sending via server relay to friend " + friendJicq);
-        sendPacket = new DatagramPacket(data, relayMessage.length(), 
-                InetAddress.getByName(server), udpPORT);
-        sendSocket.send(sendPacket);
+        try {
+            String s = sendtext.getText().trim();
+            System.out.println("Sending message:" + s);
+            
+            index = list.getSelectedIndex();
+            String friendJicq = friendjicq.get(index).toString();
+            
+            // 🌟 【关键修复】：套上 relay:好友ID: 的外壳，让服务器知道转发给谁！
+            // 完整格式：relay:接收者ID:from:发送者ID:消息内容
+            String relayMessage = "relay:" + friendJicq + ":from:" + myjicq + ":" + s;
+            byte[] data = relayMessage.getBytes();
+            
+            System.out.println("Sending via server relay to friend " + friendJicq);
+            sendPacket = new DatagramPacket(data, relayMessage.length(), 
+                    InetAddress.getByName(server), udpPORT);
+            sendSocket.send(sendPacket);
 
-    } catch (IOException e2) {
-        sendtext.append(sendtext.getText());
-        e2.printStackTrace();
+        } catch (IOException e2) {
+            sendtext.append(sendtext.getText());
+            e2.printStackTrace();
+        }
+        sendtext.setText("");
+        senddata.dispose();
     }
-    sendtext.setText("");
-    senddata.dispose();
-    
-}
 
-    void getmessage_mousePressed(MouseEvent e) {//Receive Message
-        System.out.println("zhy receiving1...." + received.toString().trim());
-        String message = received.toString().trim();
-        System.out.println("zhy receiving2...." + received.trim());
+   void getmessage_mousePressed(MouseEvent e) {//Receive Message
+        // 🌟 【关键修复】：增加防空指针保护。如果没有新消息，就提示用户而不是崩溃。
+        if (received == null) {
+            JOptionPane.showMessageDialog(this, "暂无新消息", "提示", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        System.out.println("zhy receiving1...." + received.trim());
+        String message = received.trim();
+        System.out.println("zhy receiving2...." + message);
+        
         index = list.getSelectedIndex();
         if (index == index4)
             getinfo.append(message); //Display message from selected friend
