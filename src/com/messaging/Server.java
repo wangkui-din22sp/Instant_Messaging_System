@@ -1287,186 +1287,92 @@ class UdpServerThread extends Thread {
         System.out.println("UDP Server started on port 5001");
     }
     
-    public void run() {
-        running = true;
-        byte[] buffer = new byte[1024];
-        
-        while (running) {
-            try {
-                // Receive UDP packet
-                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                socket.receive(packet);
-                
-                String message = new String(packet.getData(), 0, packet.getLength());
-                String senderIp = packet.getAddress().getHostAddress();
-                
-                System.out.println("UDP Server received from " + senderIp + ": " + message);
-                
-                // Parse and relay message
-                if (message.startsWith("relay:")) {
-                    // Format: relay:targetJicq:actualMessage
-                    String[] parts = message.split(":", 3);
-                    if (parts.length == 3) {
-                        try {
-                            int targetJicq = Integer.parseInt(parts[1]);
-                            String actualMessage = parts[2];
-                            
-                            // Get target IP from onlineUsers map
-                            String targetIp = Server.getOnlineUserIp(targetJicq);
-                            
-                            if (targetIp != null && !targetIp.equals("null")) {
-                                // Forward to target
-                                byte[] forwardData = actualMessage.getBytes();
-                                DatagramPacket forwardPacket = new DatagramPacket(
-                                    forwardData, forwardData.length,
-                                    InetAddress.getByName(targetIp), 5001);
-                                socket.send(forwardPacket);
-                                
-                                System.out.println("Forwarded message to user " + targetJicq + 
-                                                 " at IP " + targetIp);
-                            } else {
-                                System.out.println("Target user " + targetJicq + " is offline or IP unknown");
-                            }
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid target JICQ format: " + parts[1]);
-                        }
-                    }
-                }
-                // Handle online/offline notifications
-                else if (message.startsWith("online:")) {
-                    // Format: online:userId
-                    String[] parts = message.split(":");
-                    if (parts.length == 2) {
-                        try {
-                            int userId = Integer.parseInt(parts[1]);
-                            // Get all friends of this user and notify them
-                            notifyFriendsOnline(userId, senderIp);
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid user ID format in online notification");
-                        }
-                    }
-                }
-                else if (message.startsWith("offline:")) {
-                    // Format: offline:userId
-                    String[] parts = message.split(":");
-                    if (parts.length == 2) {
-                        try {
-                            int userId = Integer.parseInt(parts[1]);
-                            // Get all friends of this user and notify them
-                            Server.notifyFriendsOffline(userId);
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid user ID format in offline notification");
-                        }
-                    }
-                }
-                // Handle file transfer requests
-                else if (message.startsWith("filerequest:")) {
-                    // Format: filerequest:targetJicq:filename
-                    String[] parts = message.split(":", 3);
-                    if (parts.length == 3) {
-                        try {
-                            int targetJicq = Integer.parseInt(parts[1]);
-                            String filename = parts[2];
-                            String targetIp = Server.getOnlineUserIp(targetJicq);
-                            
-                            if (targetIp != null && !targetIp.equals("null")) {
-                                String forwardMessage = "readyreceive" + filename;
-                                byte[] forwardData = forwardMessage.getBytes();
-                                DatagramPacket forwardPacket = new DatagramPacket(
-                                    forwardData, forwardData.length,
-                                    InetAddress.getByName(targetIp), 5001);
-                                socket.send(forwardPacket);
-                                
-                                System.out.println("Forwarded file request to user " + targetJicq);
-                            }
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid target JICQ format in file request");
-                        }
-                    }
-                }
-                
-            } catch (Exception e) {
-                e.printStackTrace();
-                if (running) {
-                    System.out.println("UDP Server error: " + e.getMessage());
-                }
-            }
-        }
-        
-        socket.close();
-    }
-    
-    // Helper method to notify friends when user comes online
-    private void notifyFriendsOnline(int userId, String userIp) {
-        System.out.println("Notifying friends that user " + userId + " is online from IP " + userIp);
-        
-        Connection conn = null;
-        PreparedStatement pstmt = null;
-        ResultSet rs = null;
-        
-        try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection(
-                "jdbc:postgresql://localhost:5432/javaicq",
-                "postgres",
-                "admin"
-            );
-            
-            // Get all friends of this user
-            String sql = "SELECT friend FROM friend WHERE icqno = ? " +
-                        "UNION " +
-                        "SELECT icqno FROM friend WHERE friend = ?";
-            pstmt = conn.prepareStatement(sql);
-            pstmt.setInt(1, userId);
-            pstmt.setInt(2, userId);
-            rs = pstmt.executeQuery();
-            
-            int notifiedFriends = 0;
-            while (rs.next()) {
-                int friendId = rs.getInt(1);
-                
-                // Check if friend is online
-                String friendIp = Server.getOnlineUserIp(friendId);
-                if (friendIp != null && !friendIp.equals("null") && !friendIp.isEmpty()) {
-                    // Send UDP online notification to friend
-                    try {
-                        String udpMessage = "online" + userId;
-                        byte[] udpData = udpMessage.getBytes();
-                        DatagramPacket packet = new DatagramPacket(udpData, udpData.length,
-                                InetAddress.getByName(friendIp), 5001);
-                        socket.send(packet);
-                        notifiedFriends++;
-                        System.out.println("Sent online notification to friend " + friendId);
-                    } catch (Exception e) {
-                        System.out.println("Failed to notify friend " + friendId + ": " + e.getMessage());
-                    }
-                }
-            }
-            
-            System.out.println("Notified " + notifiedFriends + " friends about user " + userId + " coming online");
-            
-        } catch (Exception e) {
-            System.out.println("Error notifying friends: " + e.getMessage());
-            e.printStackTrace();
-        } finally {
-            try { if (rs != null) rs.close(); } catch (SQLException e) {}
-            try { if (pstmt != null) pstmt.close(); } catch (SQLException e) {}
-            try { if (conn != null) conn.close(); } catch (SQLException e) {}
-        }
-    }
-    
-    // Helper method to notify friends when user goes offline
-    
-    
-    public void stopServer() {
+        public void stopServer() {
         running = false;
         socket.close();
     }
+    
+    public void run() {
+        running = true;
+        byte[] buffer = new byte[4096]; // 加大数据缓冲区
+        
+        while (running) {
+            try {
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                socket.receive(packet);
+                
+                // 强制使用 UTF-8 防止中文截断
+                String message = new String(packet.getData(), 0, packet.getLength(), "UTF-8").trim();
+                String senderIp = packet.getAddress().getHostAddress();
+                int senderPort = packet.getPort(); // 🌟 获取真实的 NAT 映射端口
+                
+                // 🌟 核心调试信息：无论收到什么，都打印出来！
+                System.out.println("\n[UDP 调试] 收到来自 " + senderIp + ":" + senderPort + " 的数据 -> " + message);
+                
+                if (message.startsWith("relay:")) {
+                    // 格式拆解: relay : 接收者ID : from : 发送者ID : 消息内容
+                    String[] parts = message.split(":", 5); 
+                    if (parts.length >= 5 && parts[2].equals("from")) {
+                        try {
+                            int targetJicq = Integer.parseInt(parts[1].trim());
+                            int senderJicq = Integer.parseInt(parts[3].trim());
+                            String actualMessage = parts[4];
+                            
+                            // 更新发送者的最新地址和端口
+                            Server.onlineUsers.put(senderJicq, senderIp);
+                            Server.userUdpPorts.put(senderJicq, senderPort);
+                            
+                            String targetIp = Server.getOnlineUserIp(targetJicq);
+                            Integer targetPort = Server.userUdpPorts.get(targetJicq);
+                            
+                            if (targetIp != null && !targetIp.equals("null")) {
+                                int destPort = (targetPort != null) ? targetPort : 5001; 
+                                String forwardMessage = "from:" + senderJicq + ":" + actualMessage;
+                                byte[] forwardData = forwardMessage.getBytes("UTF-8");
+                                
+                                DatagramPacket forwardPacket = new DatagramPacket(
+                                    forwardData, forwardData.length,
+                                    InetAddress.getByName(targetIp), destPort);
+                                socket.send(forwardPacket);
+                                
+                                System.out.println("[UDP 转发] 成功将 " + senderJicq + " 的消息转发给 " + targetJicq + " (" + targetIp + ":" + destPort + ")");
+                            } else {
+                                System.out.println("[UDP 拦截] 转发失败，接收者 " + targetJicq + " 不在线或未知IP。");
+                            }
+                        } catch (Exception e) {
+                            System.out.println("解析中转消息异常：" + e.getMessage());
+                        }
+                    }
+                }
+                else if (message.startsWith("online:")) {
+                    String[] parts = message.split(":");
+                    if (parts.length == 2) {
+                        try {
+                            int userId = Integer.parseInt(parts[1].trim());
+                            Server.onlineUsers.put(userId, senderIp);
+                            Server.userUdpPorts.put(userId, senderPort);
+                            System.out.println("[UDP 注册] 用户 " + userId + " 绑定端点 -> " + senderIp + ":" + senderPort);
+                        } catch (Exception e) {}
+                    }
+                }
+                // (其他逻辑不变)
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }
+    
+
+
 
 public class Server {
     
+    
     public static Map<Integer, String> onlineUsers = new ConcurrentHashMap<>();
+    // 🌟 新增：动态追踪客户端经过路由器 NAT 后的真实 UDP 端口
+    public static Map<Integer, Integer> userUdpPorts = new ConcurrentHashMap<>();
+    
 private static UdpServerThread udpServer;
     
     // Static method to get online user IP

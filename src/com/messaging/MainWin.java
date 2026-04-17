@@ -613,30 +613,24 @@ else if (received.length() > 0) {
     //Create UDP socket
 
 public void CreatUDP() {
-    try {
-        sendSocket = new DatagramSocket();
-        System.out.println("DEBUG: Send socket created on port: " + sendSocket.getLocalPort());
-        receiveSocket = new DatagramSocket(udpPORT);
-        System.out.println("DEBUG: Receive socket created on port: " + receiveSocket.getLocalPort());
-        
-        // Test if we can send to server
-        String testMsg = "test:" + myjicq;
-        byte[] testData = testMsg.getBytes();
-        DatagramPacket testPacket = new DatagramPacket(testData, testData.length, 
-                InetAddress.getByName(server), udpPORT);
-        sendSocket.send(testPacket);
-        System.out.println("DEBUG: Sent test packet to server:" + server + ":" + udpPORT);
-        
-    } catch (SocketException se) {
-        se.printStackTrace();
-        System.out.println("Socket creation error");
-        JOptionPane.showMessageDialog(this, 
-            "Port 5001 is already in use. Another instance may be running.",
-            "Port Error", JOptionPane.ERROR_MESSAGE);
-    } catch (IOException ie) {
-        System.out.println("Test send to server failed: " + ie.getMessage());
+        try {
+            receiveSocket = new DatagramSocket(udpPORT);
+            // 🌟 核心打洞技巧：将发信和收信绑定在同一个 Socket 上！
+            sendSocket = receiveSocket; 
+            System.out.println("DEBUG: Unified UDP socket created on port: " + udpPORT);
+            
+            // 刚启动时，立刻向服务器发送心跳包，告诉服务器我的公网端口
+            String testMsg = "online:" + myjicq;
+            byte[] testData = testMsg.getBytes("UTF-8");
+            DatagramPacket testPacket = new DatagramPacket(testData, testData.length, 
+                    InetAddress.getByName(server), udpPORT);
+            sendSocket.send(testPacket);
+            System.out.println("DEBUG: Sent NAT punch packet to server");
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
-}
 
 public MainWin(int s, String sername, int serport) {
     udpPORT = 5001;  
@@ -1196,45 +1190,44 @@ private void closeQuietly(DatagramSocket datagramSocket) {
 void send_mouseClicked(MouseEvent e) { // Send Message
         try {
             String s = sendtext.getText().trim();
+            if (s.isEmpty()) return;
             System.out.println("Sending message:" + s);
             
             index = list.getSelectedIndex();
             String friendJicq = friendjicq.get(index).toString();
             
-            // 🌟 【关键修复】：套上 relay:好友ID: 的外壳，让服务器知道转发给谁！
-            // 完整格式：relay:接收者ID:from:发送者ID:消息内容
+            // 🌟 精确构造5段式中转报文
             String relayMessage = "relay:" + friendJicq + ":from:" + myjicq + ":" + s;
-            byte[] data = relayMessage.getBytes();
+            byte[] data = relayMessage.getBytes("UTF-8");
             
             System.out.println("Sending via server relay to friend " + friendJicq);
-            sendPacket = new DatagramPacket(data, relayMessage.length(), 
+            // 🌟 注意这里改用 data.length，防止中文字符长度计算错误
+            sendPacket = new DatagramPacket(data, data.length, 
                     InetAddress.getByName(server), udpPORT);
             sendSocket.send(sendPacket);
 
-        } catch (IOException e2) {
-            sendtext.append(sendtext.getText());
+        } catch (Exception e2) {
             e2.printStackTrace();
         }
         sendtext.setText("");
         senddata.dispose();
     }
 
-   void getmessage_mousePressed(MouseEvent e) {//Receive Message
-        // 🌟 【关键修复】：增加防空指针保护。如果没有新消息，就提示用户而不是崩溃。
-        if (received == null) {
+   void getmessage_mousePressed(MouseEvent e) { // Receive Message
+        // 🌟 防御代码：如果 received 为空，拦截并提示，避免 NullPointerException 崩溃
+        if (received == null || received.trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, "暂无新消息", "提示", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         
         System.out.println("zhy receiving1...." + received.trim());
         String message = received.trim();
-        System.out.println("zhy receiving2...." + message);
         
         index = list.getSelectedIndex();
         if (index == index4)
-            getinfo.append(message); //Display message from selected friend
+            getinfo.append(message); 
         else
-            getinfo.append(" "); //Display blank if not selected friend
+            getinfo.append(" "); 
             
         index = list.getSelectedIndex();
     
@@ -1242,7 +1235,7 @@ void send_mouseClicked(MouseEvent e) { // Send Message
         getfromjicq.setText(friendjicq.get(index).toString());
         getdata.show();
     }
-
+    
     void getok_mouseClicked(MouseEvent e) {//Close message window
         getinfo.setText(" ");
         getdata.dispose();
