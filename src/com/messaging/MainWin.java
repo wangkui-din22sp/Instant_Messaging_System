@@ -1344,52 +1344,132 @@ void update_mousePressed(MouseEvent e) {//Update friend information
     }//delfriend
     //tell friend i am online
 
-    void online_mousePressed(MouseEvent e) {
-    // Send online notification to server for relay to friends
-    try {
-        String s = "online:" + myjicq;
-        s.trim();
-        System.out.println("Sending online notification via server: " + s);
-        byte[] data = s.getBytes();
-        
-        sendPacket = new DatagramPacket(data, s.length(),
-                InetAddress.getByName(server), udpPORT);
-        sendSocket.send(sendPacket);
-        System.out.println("Sent online notification to server");
-        
-    } catch (Exception e2) {
-        e2.printStackTrace();
-    }
-    
-    // Then check for pending requests
-    out.println("getpendingrequests");
-    out.println(myjicq);
-    
-    try {
-        String pendingCount = in.readLine();
-        int count = Integer.parseInt(pendingCount);
-        System.out.println("Found " + count + " pending requests");
-        
-        for (int i = 0; i < count; i++) {
-            String requestData = in.readLine();
-            System.out.println("Request data: " + requestData);
-            String[] parts = requestData.split(":");
-            if (parts.length >= 2) {
-                int requesterId = Integer.parseInt(parts[0]);
-                String requesterName = parts[1];
-                
-                // Show notification for each pending request
-                JOptionPane.showMessageDialog(this, 
-                    "您有来自 " + requesterName + " (" + requesterId + ") 的好友请求!\n请点击'接受'来添加好友。", 
-                    "待处理的好友请求", JOptionPane.INFORMATION_MESSAGE);
+ void online_mousePressed(MouseEvent e) {
+        // 发送上线通知给服务器
+        try {
+            String s = "online:" + myjicq;
+            s = s.trim();
+            System.out.println("Sending online notification via server: " + s);
+            byte[] data = s.getBytes();
+            
+            // 防崩溃保护
+            if (sendSocket != null) {
+                sendPacket = new DatagramPacket(data, s.length(),
+                        InetAddress.getByName(server), udpPORT);
+                sendSocket.send(sendPacket);
+                System.out.println("Sent online notification to server");
+            } else {
+                System.out.println("警告：UDP sendSocket 未初始化（可能端口冲突），跳过发送在线通知。");
             }
+            
+        } catch (Exception e2) {
+            e2.printStackTrace();
         }
-    } catch (IOException e2) {
-        sendtext.append(sendtext.getText());
-        e2.printStackTrace();
-        System.exit(1);
+        
+        // 向服务器拉取待处理的好友请求
+        out.println("getpendingrequests");
+        out.println(myjicq);
+        
+        try {
+            String pendingCount = in.readLine();
+            int count = Integer.parseInt(pendingCount);
+            System.out.println("Found " + count + " pending requests");
+            
+            // 1. 🌟 关键防御：先把所有请求数据全部读到本地的列表中，防止和后面的网络通信“串线打架”
+            java.util.List<String> pendingList = new java.util.ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                pendingList.add(in.readLine());
+            }
+            
+            // 2. 遍历本地列表，逐个弹窗让用户处理
+            for (String requestData : pendingList) {
+                System.out.println("Request data: " + requestData);
+                String[] parts = requestData.split(":");
+                if (parts.length >= 2) {
+                    int requesterId = Integer.parseInt(parts[0]);
+                    String requesterName = parts[1];
+                    
+                    // 自定义按钮文本
+                    Object[] options = {"接受", "拒绝"};
+                    // 弹出带有选项的对话框
+                    int choice = JOptionPane.showOptionDialog(this, 
+                        "您有来自 " + requesterName + " (" + requesterId + ") 的好友请求!\n请选择是否接受？", 
+                        "待处理的好友请求", 
+                        JOptionPane.YES_NO_OPTION, 
+                        JOptionPane.QUESTION_MESSAGE, 
+                        null, 
+                        options, 
+                        options[0]);
+                    
+                    // 处理用户的选择
+                    if (choice == JOptionPane.YES_OPTION) { // 如果点击了"接受"
+                        out.println("acceptfriendrequest");
+                        out.println(requesterId);
+                        out.println(myjicq);
+                        
+                        String response = in.readLine();
+                        if ("accepted".equals(response)) {
+                            // 读取服务器传回的新好友详细资料
+                            String thename = in.readLine();
+                            String thejicqno = in.readLine();
+                            String theip = in.readLine();
+                            String thestatus = in.readLine();
+                            String picinfo = in.readLine();
+                            String email = in.readLine();
+                            String sex = in.readLine();
+                            String infos = in.readLine();
+                            in.readLine(); // 读取结束标志 "over"
+                            
+                            // 更新客户端本地的好友数据集合
+                            friendnames.add(thename);
+                            friendjicq.add(new Integer(thejicqno));
+                            friendips.add(theip);
+                            status.add(thestatus);
+                            picno.add(new Integer(picinfo));
+                            friendemail.add(email);
+                            friendsex.add(sex);
+                            friendinfo.add(infos);
+                            
+                            // 将新好友刷新显示在界面列表中
+                            DefaultListModel mm2 = (DefaultListModel) list.getModel();
+                            int picid = Integer.parseInt(picinfo);
+                            if ("1".equals(thestatus)) {
+                                mm2.addElement(new Object[] { thename, new ImageIcon(picsonline[picid]) });
+                            } else {
+                                mm2.addElement(new Object[] { thename, new ImageIcon(picsoffline[picid]) });
+                            }
+                            
+                            JOptionPane.showMessageDialog(this, "成功添加 " + thename + " 为好友！");
+                            
+                            // （可选）给新好友发送一个实时 UDP 上线提醒
+                            try {
+                                String onlineMsg = "online:" + myjicq;
+                                if (sendSocket != null) {
+                                    sendSocket.send(new DatagramPacket(onlineMsg.getBytes(), onlineMsg.length(),
+                                            InetAddress.getByName(server), udpPORT));
+                                }
+                            } catch (Exception ex) { }
+                            
+                        } else {
+                            JOptionPane.showMessageDialog(this, "接受请求失败或该请求已失效。");
+                        }
+                        
+                    } else if (choice == JOptionPane.NO_OPTION) { // 如果点击了"拒绝"
+                        out.println("rejectfriendrequest");
+                        out.println(requesterId);
+                        out.println(myjicq);
+                        
+                        String response = in.readLine();
+                        if ("rejected".equals(response)) {
+                            JOptionPane.showMessageDialog(this, "已拒绝 " + requesterName + " 的好友请求。");
+                        }
+                    }
+                }
+            }
+        } catch (Exception e2) {
+            e2.printStackTrace();
+        }
     }
-}//end tellfrienonline
 
     void myinfo_mousePressed(MouseEvent e) {//Show my information
         if (fromunknow) {
