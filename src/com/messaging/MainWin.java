@@ -211,7 +211,7 @@ public class MainWin extends JFrame implements Runnable {
 
     int myjicq;
 
-    String received;
+    String received = ""; // 🌟 必须初始化为空字符串，不能是 null
 
     //Friend information
     JLabel jLabel3 = new JLabel();

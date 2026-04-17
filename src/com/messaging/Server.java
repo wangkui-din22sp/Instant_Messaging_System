@@ -1611,6 +1611,7 @@ public static void updateUserOnlineStatus(int jicq, String ip, int status) {
         // Start UDP Server
         try {
             udpServer = new UdpServerThread();
+            udpServer.start(); // 🌟 【关键修复】：必须调用 start() 才能真正启动线程开始监听！
             System.out.println("UDP Server thread started");
         } catch (SocketException e) {
             System.err.println("Failed to start UDP server on port 5001: " + e.getMessage());
