@@ -825,7 +825,7 @@ public class MainWin extends JFrame implements Runnable {
         if (datagramSocket != null) { datagramSocket.close(); }
     }
 
-    void list_mouseClicked(MouseEvent e) {
+    void list_mouseClicked(MouseEvent e) { 
         jPopupMenu1.show(this, e.getX() + 20, e.getY() + 20);
     }
 

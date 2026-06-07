@@ -104,7 +104,7 @@ public class New extends JFrame {//Login window
         quit.setText("Quit");
         quit.setBounds(new Rectangle(225, 120, 79, 29));
         quit.setOpaque(false);
-        quit.addMouseListener(new java.awt.event.MouseAdapter() {
+        quit.addMouseListener(new java.awt.event.MouseAdapter() { 
             public void mouseClicked(MouseEvent e) {
                 quit_mouseClicked(e);
             }
