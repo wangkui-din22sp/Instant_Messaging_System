@@ -838,6 +838,12 @@ public class MainWin extends JFrame implements Runnable {
         senddata.dispose();
     }
 
+    void ok_mouseClicked(MouseEvent e) {
+        if (about != null) {
+            about.dispose();
+        }
+    }
+
     void sendmessage_mousePressed(MouseEvent e) {
         index = list.getSelectedIndex();
         if(index < 0) return;
