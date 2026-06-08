@@ -739,34 +739,7 @@ if (received.startsWith("from:")) {
         // 🌟 增大窗口整体高度以容纳两个区域
         senddata.setSize(400, 410);
 
-        // 9. Dialog: View Message
-        getdata.getContentPane().setLayout(null);
-        getdata.setTitle("Received Message");
-        jLabel3.setText("From:");
-        jLabel3.setBounds(new Rectangle(15, 15, 50, 20));
-        getfromname.setBounds(new Rectangle(65, 15, 100, 22));
-        getfromname.setEditable(false);
-        jLabel4.setText("JICQ ID:");
-        jLabel4.setBounds(new Rectangle(180, 15, 60, 20));
-        getfromjicq.setBounds(new Rectangle(240, 15, 100, 22));
-        getfromjicq.setEditable(false);
         
-        getinfo.setBounds(new Rectangle(15, 50, 350, 140));
-        getinfo.setEditable(false);
-        getinfo.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
-        
-        getok.setText("Close");
-        getok.setBounds(new Rectangle(150, 205, 90, 30));
-        getok.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(MouseEvent e) { getok_mouseClicked(e); }
-        });
-        getdata.getContentPane().add(getinfo);
-        getdata.getContentPane().add(getok);
-        getdata.getContentPane().add(jLabel3);
-        getdata.getContentPane().add(getfromname);
-        getdata.getContentPane().add(jLabel4);
-        getdata.getContentPane().add(getfromjicq);
-        getdata.setSize(400, 280);
 
         // 10. Dialog: Contact Profile
         hello.getContentPane().setLayout(null);
