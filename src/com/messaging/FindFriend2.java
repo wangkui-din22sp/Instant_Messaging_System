@@ -198,56 +198,67 @@ public FindFriend2(int whoami, String host, int port) {
     }
 
     // 查找好友信息
+// 查找好友信息
     void find2_mouseClicked(MouseEvent e) {
-    // Clear previous data first
-    nickname.clear(); sex.clear(); place.clear(); ip.clear();
-    emails.clear(); infos.clear(); status.clear(); jicq.clear(); pic.clear();
-    
-    DefaultListModel mm = (DefaultListModel) list2.getModel();
-    mm.clear(); // Clear the list model
-    
-    out.println("find");
-    
-    try {
-        String s;
-        int count = 0;
-        // read find info - first set of data
-        do {
-            s = in.readLine();
-            if (s.equals("over"))
-                break;
-            nickname.add(s);
-            sex.add(in.readLine());
-            place.add(in.readLine());
-            ip.add(in.readLine());
-            emails.add(in.readLine());
-            infos.add(in.readLine());
-            status.add(in.readLine()); // String status
-            count++;
-        } while (!s.equals("over"));
+        // --- 增加时间计算：记录开始时间 ---
+        long startTime = System.currentTimeMillis();
+        System.out.println("[Debug] 客户端开始查找所有用户...");
+
+        // Clear previous data first
+        nickname.clear(); sex.clear(); place.clear(); ip.clear();
+        emails.clear(); infos.clear(); status.clear(); jicq.clear(); pic.clear();
         
-        // read their jicqno - second set of data
-        int theirjicq, picinfo;
-        String sta;
-        for (int x = 0; x < count; x++) {
-            theirjicq = Integer.parseInt(in.readLine());
-            jicq.add(new Integer(theirjicq));
+        DefaultListModel mm = (DefaultListModel) list2.getModel();
+        mm.clear(); // Clear the list model
+        
+        out.println("find");
+        
+        try {
+            String s;
+            int count = 0;
+            // read find info - first set of data
+            do {
+                s = in.readLine();
+                if (s.equals("over"))
+                    break;
+                nickname.add(s);
+                sex.add(in.readLine());
+                place.add(in.readLine());
+                ip.add(in.readLine());
+                emails.add(in.readLine());
+                infos.add(in.readLine());
+                status.add(in.readLine()); // String status
+                count++;
+            } while (!s.equals("over"));
             
-            picinfo = Integer.parseInt(in.readLine());
-            pic.add(new Integer(picinfo));
+            // read their jicqno - second set of data
+            int theirjicq, picinfo;
+            String sta;
+            for (int x = 0; x < count; x++) {
+                theirjicq = Integer.parseInt(in.readLine());
+                jicq.add(new Integer(theirjicq));
+                
+                picinfo = Integer.parseInt(in.readLine());
+                pic.add(new Integer(picinfo));
+                
+                sta = in.readLine(); // Read but don't store in status vector
+                // status vector already has the string status from first set
+            }
             
-            sta = in.readLine(); // Read but don't store in status vector
-            // status vector already has the string status from first set
-        }
-        
-        // display found friends
-        for (int i = 0; i < nickname.size(); i++) {
-            mm.addElement(new Object[] { 
-                nickname.get(i), sex.get(i), place.get(i), status.get(i) 
-            });
-        }
-        
-    } catch (IOException e4) {
+            // display found friends
+            for (int i = 0; i < nickname.size(); i++) {
+                mm.addElement(new Object[] { 
+                    nickname.get(i), sex.get(i), place.get(i), status.get(i) 
+                });
+            }
+            
+            // --- 增加时间计算：记录结束时间并输出 ---
+            long endTime = System.currentTimeMillis();
+            long timeTaken = endTime - startTime;
+            System.out.println("[Debug] 查找好友完成，所用时间: " + timeTaken + " 毫秒 (ms)。共找到 " + count + " 个用户。");
+            
+        } catch (IOException e4) {
+            // ... (原有 catch 代码保持不变) catch (IOException e4) {
         JOptionPane.showMessageDialog(this, "搜索失败: " + e4.getMessage(), 
                 "错误", JOptionPane.ERROR_MESSAGE);
         e4.printStackTrace();

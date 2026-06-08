@@ -292,6 +292,9 @@ private void sendRelayToServer(String message) {
     /* Connect to server */
 /* Connect to server */
 public void ConnectServer(int myid) {
+    // --- 增加时间计算：记录登录连接开始时间 ---
+        long loginStartTime = System.currentTimeMillis();
+        System.out.println("[Debug] 客户端开始登录并获取好友列表...");
     try {
         socket = new Socket(InetAddress.getByName(server), serverport);
 
@@ -327,6 +330,10 @@ public void ConnectServer(int myid) {
             friendinfo.add(infos);
         } while (!friendname.equals("over"));
         out.println(udpPORT);
+    
+        long loginEndTime = System.currentTimeMillis();
+            long loginTimeTaken = loginEndTime - loginStartTime;
+            System.out.println("[Debug] 登录及获取好友列表完成，所用时间: " + loginTimeTaken + " 毫秒 (ms)。");
     } catch (IOException e1) {
         System.out.println("false");
         return; // Return early on error

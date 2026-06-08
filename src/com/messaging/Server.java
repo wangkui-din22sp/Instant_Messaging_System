@@ -351,94 +351,100 @@ private void sendPendingFriendRequests(int userId, String userIp) {
     // You could store this in a separate map if needed
 }
    else if (str.equals("login")) {
-    System.out.println("=== LOGIN ATTEMPT STARTED ===");
-    
-    // Read JICQ number and password
-    String jicqStr = in.readLine();
-    String password = in.readLine();
-    
-    if (jicqStr == null || password == null) {
-        out.println("false");
-        System.out.println("Login failed: Null input received");
-        System.out.println("=== LOGIN ATTEMPT ENDED ===");
-        return;
-    }
-    
-    System.out.println("Login attempt - JICQ: " + jicqStr + ", Password: [hidden]");
-    
-    boolean loginSuccessful = false;
-    Connection conn = null;
-    PreparedStatement pstmt = null;
-    ResultSet rs = null;
-    
-    try {
-        int userId = Integer.parseInt(jicqStr);
-        
-        // Check database for user - USING POSTGRESQL
-        Class.forName("org.postgresql.Driver");
-        conn = DriverManager.getConnection(
-            "jdbc:postgresql://localhost:5432/javaicq",
-            "postgres",
-            "admin"
-        );
-        
-        // Note: column name is "icqno", not "jicqno" in PostgreSQL
-        String sql = "SELECT * FROM icq WHERE icqno = ? AND password = ?";
-        pstmt = conn.prepareStatement(sql);
-        pstmt.setInt(1, userId);
-        pstmt.setString(2, password);
-        rs = pstmt.executeQuery();
-        
-        if (rs.next()) {
-            loginSuccessful = true;
-            System.out.println("Login successful for user: " + userId);
-        } else {
-            System.out.println("Login failed: Invalid credentials for user: " + userId);
-        }
-        
-    } catch (NumberFormatException e) {
-        System.out.println("Login failed: Invalid JICQ number format: " + jicqStr);
-    } catch (ClassNotFoundException e) {
-        System.out.println("Login failed: PostgreSQL driver not found: " + e.getMessage());
-    } catch (SQLException e) {
-        System.out.println("Login failed: Database error: " + e.getMessage());
-        e.printStackTrace();
-    } finally {
-        try { if (rs != null) rs.close(); } catch (SQLException e) {}
-        try { if (pstmt != null) pstmt.close(); } catch (SQLException e) {}
-        try { if (conn != null) conn.close(); } catch (SQLException e) {}
-    }
-    
-    if (loginSuccessful) {
-        try {
-            int userId = Integer.parseInt(jicqStr);
-            String userIp = socket.getInetAddress().getHostAddress();
-            
-            // Store in online users map
-            if (Server.onlineUsers == null) {
-                Server.onlineUsers = new ConcurrentHashMap<>();
-            }
-            Server.onlineUsers.put(userId, userIp);
-            System.out.println("User " + userId + " is now online at IP: " + userIp);
-            
-            // Update database with online status - ALSO USE POSTGRESQL
-            Server.updateUserOnlineStatus(userId, userIp, 1); // 1 = online
-            
-            // Also, check and send any pending friend requests for this user
-            sendPendingFriendRequests(userId, userIp);
-            
-            out.println("ok");
-            
-        } catch (Exception e) {
-            System.out.println("Error during login processing: " + e.getMessage());
-            out.println("false");
-        }
-    } else {
-        out.println("false");
-    }
-    
-    System.out.println("=== LOGIN ATTEMPT ENDED ===");
-}
+                    System.out.println("=== LOGIN ATTEMPT STARTED ===");
+                    long startTime = System.currentTimeMillis(); // 🌟 1. 记录登录流程开始时间
+                    
+                    // Read JICQ number and password
+                    String jicqStr = in.readLine();
+                    String password = in.readLine();
+                    
+                    if (jicqStr == null || password == null) {
+                        out.println("false");
+                        System.out.println("Login failed: Null input received");
+                        long endTime = System.currentTimeMillis();
+                        System.out.println("=== LOGIN ATTEMPT ENDED (Failed in " + (endTime - startTime) + " ms) ===");
+                        return;
+                    }
+                    
+                    System.out.println("Login attempt - JICQ: " + jicqStr + ", Password: [hidden]");
+                    
+                    boolean loginSuccessful = false;
+                    Connection conn = null;
+                    PreparedStatement pstmt = null;
+                    ResultSet rs = null;
+                    
+                    try {
+                        int userId = Integer.parseInt(jicqStr);
+                        
+                        // Check database for user - USING POSTGRESQL
+                        Class.forName("org.postgresql.Driver");
+                        conn = DriverManager.getConnection(
+                            "jdbc:postgresql://localhost:5432/javaicq",
+                            "postgres",
+                            "admin"
+                        );
+                        
+                        // Note: column name is "icqno", not "jicqno" in PostgreSQL
+                        String sql = "SELECT * FROM icq WHERE icqno = ? AND password = ?";
+                        pstmt = conn.prepareStatement(sql);
+                        pstmt.setInt(1, userId);
+                        pstmt.setString(2, password);
+                        rs = pstmt.executeQuery();
+                        
+                        if (rs.next()) {
+                            loginSuccessful = true;
+                            System.out.println("Login successful for user: " + userId);
+                        } else {
+                            System.out.println("Login failed: Invalid credentials for user: " + userId);
+                        }
+                        
+                    } catch (NumberFormatException e) {
+                        System.out.println("Login failed: Invalid JICQ number format: " + jicqStr);
+                    } catch (ClassNotFoundException e) {
+                        System.out.println("Login failed: PostgreSQL driver not found: " + e.getMessage());
+                    } catch (SQLException e) {
+                        System.out.println("Login failed: Database error: " + e.getMessage());
+                        e.printStackTrace();
+                    } finally {
+                        try { if (rs != null) rs.close(); } catch (SQLException e) {}
+                        try { if (pstmt != null) pstmt.close(); } catch (SQLException e) {}
+                        try { if (conn != null) conn.close(); } catch (SQLException e) {}
+                    }
+                    
+                    if (loginSuccessful) {
+                        try {
+                            int userId = Integer.parseInt(jicqStr);
+                            String userIp = socket.getInetAddress().getHostAddress();
+                            
+                            // Store in online users map
+                            if (Server.onlineUsers == null) {
+                                Server.onlineUsers = new ConcurrentHashMap<>();
+                            }
+                            Server.onlineUsers.put(userId, userIp);
+                            System.out.println("User " + userId + " is now online at IP: " + userIp);
+                            
+                            // Update database with online status - ALSO USE POSTGRESQL
+                            Server.updateUserOnlineStatus(userId, userIp, 1); // 1 = online
+                            
+                            // Also, check and send any pending friend requests for this user
+                            sendPendingFriendRequests(userId, userIp);
+                            
+                            out.println("ok");
+                            
+                        } catch (Exception e) {
+                            System.out.println("Error during login processing: " + e.getMessage());
+                            out.println("false");
+                        }
+                    } else {
+                        out.println("false");
+                    }
+                    
+                    long endTime = System.currentTimeMillis(); // 🌟 2. 记录登录流程结束时间
+                    long duration = endTime - startTime;       // 🌟 3. 计算总耗时
+                    
+                    // 🌟 4. 打印带耗时的结束信息
+                    System.out.println("=== LOGIN ATTEMPT ENDED (Time taken: " + duration + " ms) ===");
+                }
 
                 // Handle client new user registration request
                 // Handle client new user registration request
@@ -529,7 +535,10 @@ private void sendPendingFriendRequests(int userId, String userIp) {
 } // End new user registration // End new user registration
 
                 // Handle user search for friends
+                // Handle user search for friends
                 else if (str.equals("find")) {
+                    System.out.println("=== STARTING USER SEARCH ===");
+                    long startTime = System.currentTimeMillis(); // 🌟 记录开始时间
                     try {
                         Class.forName("org.postgresql.Driver");
                         Connection c3 = DriverManager.getConnection(
@@ -541,7 +550,9 @@ private void sendPendingFriendRequests(int userId, String userIp) {
                         String find = "select nickname,sex,place,ip,email,info,status from icq";
                         Statement st = c3.createStatement();
                         ResultSet result = st.executeQuery(find);
+                        int count = 0; // 记录查询到的用户数量
                         while (result.next()) {
+                            count++;
                             out.println(result.getString("nickname"));
                             out.println(result.getString("sex"));
                             out.println(result.getString("place"));
@@ -571,7 +582,19 @@ private void sendPendingFriendRequests(int userId, String userIp) {
                         }
                         iset.close();
                         c3.close();
+                        
+                        long endTime = System.currentTimeMillis(); // 🌟 记录结束时间
+                        long duration = endTime - startTime; // 🌟 计算耗时
+                        
+                        // 🌟 打印调试信息，包含耗时和查找到的用户数量
+                        System.out.println("=== USER SEARCH COMPLETED ===");
+                        System.out.println("Found " + count + " users.");
+                        System.out.println("Time taken to fetch and send all users: " + duration + " ms");
+                        
                     } catch (Exception e) {
+                        long errorTime = System.currentTimeMillis();
+                        System.out.println("=== USER SEARCH FAILED ===");
+                        System.out.println("Failed after " + (errorTime - startTime) + " ms");
                         e.printStackTrace();
                         System.out.println("false");
                     }
@@ -1310,6 +1333,8 @@ class UdpServerThread extends Thread {
                 System.out.println("\n[UDP 调试] 收到来自 " + senderIp + ":" + senderPort + " 的数据 -> " + message);
                 
                 if (message.startsWith("relay:")) {
+                    long relayStartTime = System.nanoTime(); // 🌟 1. 记录开始解析与中转的时间 (使用纳秒级高精度计时)
+                    
                     // 格式拆解: relay : 接收者ID : from : 发送者ID : 消息内容
                     String[] parts = message.split(":", 5); 
                     if (parts.length >= 5 && parts[2].equals("from")) {
@@ -1333,9 +1358,16 @@ class UdpServerThread extends Thread {
                                 DatagramPacket forwardPacket = new DatagramPacket(
                                     forwardData, forwardData.length,
                                     InetAddress.getByName(targetIp), destPort);
-                                socket.send(forwardPacket);
+                                
+                                socket.send(forwardPacket); // 发送数据包给 User B
+                                
+                                long relayEndTime = System.nanoTime(); // 🌟 2. 数据包发出去的瞬间，记录结束时间
+                                double durationMs = (relayEndTime - relayStartTime) / 1_000_000.0; // 🌟 3. 将纳秒转换为毫秒，保留小数
                                 
                                 System.out.println("[UDP 转发] 成功将 " + senderJicq + " 的消息转发给 " + targetJicq + " (" + targetIp + ":" + destPort + ")");
+                                // 🌟 4. 打印超高精度的中转耗时信息
+                                System.out.println("=== ⚡ 消息中继性能测试: 服务器处理耗时 " + String.format("%.3f", durationMs) + " 毫秒 ==="); 
+                                
                             } else {
                                 System.out.println("[UDP 拦截] 转发失败，接收者 " + targetJicq + " 不在线或未知IP。");
                             }
