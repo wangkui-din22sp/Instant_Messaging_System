@@ -573,24 +573,40 @@ else if (received.length() > 0) {
                     final String displayName = friendName;
                     final String message = actualMessage;
                     final int idx = foundIndex;
+                    final String senderJicqStr = parts[1];
                     
                     SwingUtilities.invokeLater(new Runnable() {
                         public void run() {
-                            JOptionPane.showMessageDialog(MainWin.this, 
-                                "来自" + displayName + "的消息: " + message, 
-                                "新消息", JOptionPane.INFORMATION_MESSAGE);
+                            // 1. 设置聊天对话框顶部的发送者名字和JICQ号
+                            getfromname.setText(displayName);
+                            getfromjicq.setText(senderJicqStr);
+                            
+                            // 2. 将收到的消息追加到聊天面板的文本区中
+                            getinfo.append(displayName + " 说: " + message + "\n");
+                            
+                            // 3. 如果聊天对话框当前没打开，则将其居中显示出来
+                            if (!getdata.isVisible()) {
+                                getdata.setLocationRelativeTo(MainWin.this);
+                                getdata.setVisible(true);
+                            }
                             index4 = idx;
                         }
                     });
                 } else {
                     // Unknown sender
                     final String message = actualMessage;
+                    final String unknownId = parts[1];
                     
                     SwingUtilities.invokeLater(new Runnable() {
                         public void run() {
-                            JOptionPane.showMessageDialog(MainWin.this, 
-                                "Unknown sender (JICQ: " + parts[1] + ") message: " + message, 
-                                "未知消息", JOptionPane.INFORMATION_MESSAGE);
+                            getfromname.setText("未知用户");
+                            getfromjicq.setText(unknownId);
+                            getinfo.append("未知用户 (" + unknownId + ") 说: " + message + "\n");
+                            
+                            if (!getdata.isVisible()) {
+                                getdata.setLocationRelativeTo(MainWin.this);
+                                getdata.setVisible(true);
+                            }
                             fromunknow = true;
                         }
                     });
