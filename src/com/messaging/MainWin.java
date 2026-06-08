@@ -373,55 +373,80 @@ public class MainWin extends JFrame implements Runnable {
                     gf.fileServer();
                 }
                 else if (received.length() > 0) {
-                    if (received.startsWith("from:")) {
-                        String[] parts = received.split(":", 3);
-                        if (parts.length == 3) {
-                            try {
-                                int senderJicq = Integer.parseInt(parts[1]);
-                                String actualMessage = parts[2];
+if (received.startsWith("from:")) {
+                    String[] parts = received.split(":", 3);
+                    if (parts.length == 3) {
+                        try {
+                            int senderJicq = Integer.parseInt(parts[1]);
+                            String actualMessage = parts[2];
+                            
+                            boolean found = false;
+                            String friendName = "好友";
+                            int foundIndex = -1;
+                            
+                            // 检索本地好友列表，找出是谁发来的消息
+                            for (int i = 0; i < friendjicq.size(); i++) {
+                                int friendId = Integer.parseInt(friendjicq.get(i).toString());
+                                if (friendId == senderJicq) {
+                                    friendName = friendnames.get(i).toString().trim();
+                                    foundIndex = i;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (found) {
+                                final String displayName = friendName;
+                                final String message = actualMessage;
+                                final int idx = foundIndex;
+                                final String senderJicqStr = parts[1];
                                 
-                                boolean found = false;
-                                String friendName = "Unknown";
-                                int foundIndex = -1;
-                                
-                                for (int i = 0; i < friendjicq.size(); i++) {
-                                    int friendId = Integer.parseInt(friendjicq.get(i).toString());
-                                    if (friendId == senderJicq) {
-                                        friendName = friendnames.get(i).toString().trim();
-                                        foundIndex = i;
-                                        found = true;
-                                        break;
+                                SwingUtilities.invokeLater(new Runnable() {
+                                    public void run() {
+                                        // 🌟 智能化路由机制 🌟
+                                        // 检查统一聊天室窗口当前是否可见，且窗口当前显示的正是这个发信人的JICQ
+                                        if (senddata.isVisible() && icqno.getText().trim().equals(senderJicqStr)) {
+                                            // 处于活动会话中：直接瀑布流追加文本，不弹弹窗，用户能实时看到
+                                            getinfo.append(displayName + ": " + message + "\n");
+                                        } else {
+                                            // 未在会话中（或在跟别人聊）：自动切回该发信人的聊天室上下文并弹出窗口
+                                            list.setSelectedIndex(idx);
+                                            nametext.setText(displayName);
+                                            icqno.setText(senderJicqStr);
+                                            getinfo.append(displayName + ": " + message + "\n");
+                                            
+                                            senddata.setBounds(senddata.getX(), senddata.getY(), 430, 460);
+                                            senddata.setLocationRelativeTo(MainWin.this);
+                                            senddata.setVisible(true);
+                                        }
+                                        // 强制将滚动条置于最底部
+                                        getinfo.setCaretPosition(getinfo.getDocument().getLength());
+                                        index4 = idx;
                                     }
-                                }
-                                
-                                if (found) {
-                                    final String displayName = friendName;
-                                    final String message = actualMessage;
-                                    final int idx = foundIndex;
-                                    
-                                    SwingUtilities.invokeLater(new Runnable() {
-                                        public void run() {
-                                            JOptionPane.showMessageDialog(MainWin.this, 
-                                                "Message from " + displayName + ":\n" + message, 
-                                                "New Message", JOptionPane.INFORMATION_MESSAGE);
-                                            index4 = idx;
-                                        }
-                                    });
-                                } else {
-                                    final String message = actualMessage;
-                                    SwingUtilities.invokeLater(new Runnable() {
-                                        public void run() {
-                                            JOptionPane.showMessageDialog(MainWin.this, 
-                                                "Message from unknown sender (JICQ: " + parts[1] + "):\n" + message, 
-                                                "Unknown Message", JOptionPane.INFORMATION_MESSAGE);
-                                            fromunknow = true;
-                                        }
-                                    });
-                                }
-                                continue; 
-                            } catch (NumberFormatException e) { }
+                                });
+                            } else {
+                                // 未知陌生人消息的兜底安全处理
+                                final String message = actualMessage;
+                                final String unknownId = parts[1];
+                                SwingUtilities.invokeLater(new Runnable() {
+                                    public void run() {
+                                        nametext.setText("未知用户");
+                                        icqno.setText(unknownId);
+                                        getinfo.append("未知用户 (" + unknownId + "): " + message + "\n");
+                                        
+                                        senddata.setBounds(senddata.getX(), senddata.getY(), 430, 460);
+                                        senddata.setLocationRelativeTo(MainWin.this);
+                                        senddata.setVisible(true);
+                                        fromunknow = true;
+                                    }
+                                });
+                            }
+                            continue;
+                        } catch (NumberFormatException ex) {
+                            System.out.println("解析中继报文JICQ错误");
                         }
                     }
+                }
                 }
             } catch (IOException ex) {
                 ex.printStackTrace();
@@ -664,10 +689,13 @@ public class MainWin extends JFrame implements Runnable {
         jPopupMenu1.addSeparator();
         jPopupMenu1.add(delfriend);
 
-        // 8. Dialog: Send Message
+// 8. Dialog: Send Message (🌟 升级为 WhatsApp 风格统一聊天室 🌟)
         Container senddiapane = senddata.getContentPane();
         senddiapane.setLayout(null);
-        senddata.setTitle("Send Message");
+        senddata.setTitle("即时通讯会话室"); 
+        senddata.getContentPane().setBackground(new Color(245, 247, 250));
+        senddata.setResizable(false);
+
         name.setText("Nickname:");
         name.setBounds(new Rectangle(15, 15, 70, 20));
         nametext.setBounds(new Rectangle(85, 15, 100, 22));
@@ -676,27 +704,40 @@ public class MainWin extends JFrame implements Runnable {
         icq.setBounds(new Rectangle(200, 15, 60, 20));
         icqno.setBounds(new Rectangle(260, 15, 100, 22));
         icqno.setEditable(false);
-        
-        sendtext.setBounds(new Rectangle(15, 50, 350, 130));
+
+        // 🌟 核心改造：将历史消息展示区(getinfo)放入上半部分
+        getinfo.setEditable(false);
+        getinfo.setBackground(Color.WHITE);
+        getinfo.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
+        JScrollPane historyScroll = new JScrollPane(getinfo);
+        historyScroll.setBounds(new Rectangle(15, 45, 360, 200));
+        senddiapane.add(historyScroll);
+
+        // 🌟 将打字输入框(sendtext)放入下半部分
+        sendtext.setRows(3);
         sendtext.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
-        
+        JScrollPane inputScroll = new JScrollPane(sendtext);
+        inputScroll.setBounds(new Rectangle(15, 255, 360, 60));
+        senddiapane.add(inputScroll);
+
         send.setText("Send");
-        send.setBounds(new Rectangle(80, 195, 100, 30));
+        send.setBounds(new Rectangle(80, 325, 100, 30));
         send.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(MouseEvent e) { send_mouseClicked(e); }
         });
-        cancel.setText("Cancel");
-        cancel.setBounds(new Rectangle(210, 195, 100, 30));
+        cancel.setText("Close");
+        cancel.setBounds(new Rectangle(210, 325, 100, 30));
         cancel.addMouseListener(new MainWin_cancel_mouseAdapter(this));
-        
+
         senddiapane.add(send);
         senddiapane.add(cancel);
-        senddiapane.add(sendtext);
         senddiapane.add(name);
         senddiapane.add(nametext);
         senddiapane.add(icq);
         senddiapane.add(icqno);
-        senddata.setSize(400, 280);
+        
+        // 🌟 增大窗口整体高度以容纳两个区域
+        senddata.setSize(400, 410);
 
         // 9. Dialog: View Message
         getdata.getContentPane().setLayout(null);
@@ -844,30 +885,23 @@ public class MainWin extends JFrame implements Runnable {
         }
     }
 
-    void sendmessage_mousePressed(MouseEvent e) {
-        index = list.getSelectedIndex();
-        if(index < 0) return;
-        nametext.setText(friendnames.get(index).toString());
-        icqno.setText(friendjicq.get(index).toString());
-        theip = friendips.get(index).toString();
-        senddata.setLocationRelativeTo(MainWin.this);
-        senddata.setVisible(true);
-    }
+
 
     void find_mousePressed(MouseEvent e) {
         findf.setLocationRelativeTo(MainWin.this);
         findf.setVisible(true);
     }
 
-    void send_mouseClicked(MouseEvent e) { 
+void send_mouseClicked(MouseEvent e) { 
         try {
             String s = sendtext.getText().trim();
             if (s.isEmpty()) return;
             
             index = list.getSelectedIndex();
-            if(index < 0) return;
+            if (index == -1) return;
             String friendJicq = friendjicq.get(index).toString();
             
+            // 封装标准的路由中继数据报文
             String relayMessage = "relay:" + friendJicq + ":from:" + myjicq + ":" + s;
             byte[] data = relayMessage.getBytes("UTF-8");
             
@@ -875,32 +909,49 @@ public class MainWin extends JFrame implements Runnable {
                     InetAddress.getByName(server), udpPORT);
             sendSocket.send(sendPacket);
 
-        } catch (Exception e2) {
-            e2.printStackTrace();
+            // 🌟 WhatsApp 核心体验：在同一个对话框里，立刻追加显示自己刚刚说的话
+            getinfo.append("我: " + s + "\n");
+            
+            // 自动让历史消息滚动条滚动到最底部，看到最新发言
+            getinfo.setCaretPosition(getinfo.getDocument().getLength());
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
-        sendtext.setText("");
-        senddata.dispose();
+        sendtext.setText(""); // 🌟 清空打字输入框，方便用户连续打字聊天
+        // 🌟 严禁在这里调用 senddata.dispose()，这样聊天室窗口才能持久保持开启
     }
 
-    void getmessage_mousePressed(MouseEvent e) { 
-        if (received == null || received.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No new messages.", "Info", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        
-        String message = received.trim();
+void sendmessage_mousePressed(MouseEvent e) { // 入口1：点击发送消息
+        openUnifiedChatRoom(e.getX(), e.getY());
+    }
+
+    void getmessage_mousePressed(MouseEvent e) { // 入口2：点击接收/查看消息
+        // 彻底废弃原有的 getdata 外壳，直接引导用户进入对应的统一实时聊天室
+        openUnifiedChatRoom(e.getX(), e.getY());
+    }
+
+    // 🌟 提取的公共核心方法：动态加载对应好友的上下文并弹出统一聊天室
+    private void openUnifiedChatRoom(int clickX, int clickY) {
         index = list.getSelectedIndex();
-        if (index == index4)
-            getinfo.append(message + "\n"); 
-        else
-            getinfo.append(" "); 
-            
-        if(index >= 0) {
-            getfromname.setText(friendnames.get(index).toString());
-            getfromjicq.setText(friendjicq.get(index).toString());
+        if (index == -1) return;
+        
+        String targetName = friendnames.get(index).toString().trim();
+        String targetJicq = friendjicq.get(index).toString().trim();
+        theip = friendips.get(index).toString();
+        
+        // 如果当前切换了聊天对象，为了防止聊天记录混淆，可以根据需要清除上一个人的内容
+        // getinfo.setText(""); 
+        
+        nametext.setText(targetName);
+        icqno.setText(targetJicq);
+        
+        senddata.setBounds(clickX + 50, clickY + 50, 430, 460); // 给予充足的容器空间
+        senddata.setLocationRelativeTo(MainWin.this);
+        
+        if (!senddata.isVisible()) {
+            senddata.setVisible(true);
         }
-        getdata.setLocationRelativeTo(MainWin.this);
-        getdata.setVisible(true);
     }
     
     void getok_mouseClicked(MouseEvent e) {
